@@ -162,6 +162,7 @@ export default function EntityExplorer({
             <thead>
               <tr>
                 <th>Name / Status</th>
+                <th>Linked Suspect & Observation</th>
                 <th>Phone Numbers</th>
                 <th>Known Aliases</th>
                 <th>Occupation / Address</th>
@@ -175,7 +176,28 @@ export default function EntityExplorer({
                 <tr key={p.id}>
                   <td>
                     <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{p.name}</div>
-                    <span className="mini-tag status-suspect">{p.status}</span>
+                    <span className={`mini-tag ${p.status === "SUSPECT" ? "status-suspect" : p.status === "WITNESS" ? "status-verified" : ""}`}>{p.status}</span>
+                  </td>
+                  <td style={{ maxWidth: "260px" }}>
+                    {p.connected_person_name ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <span style={{ fontSize: "0.75rem", color: "var(--accent-cyan)", fontWeight: 600 }}>🔗 {p.connected_person_name}</span>
+                          {p.connection_type && (
+                            <span className="mini-tag" style={{ fontSize: "0.65rem", background: "rgba(0, 242, 254, 0.12)", color: "#38bdf8" }}>
+                              {p.connection_type}
+                            </span>
+                          )}
+                        </div>
+                        {p.connection_notes && (
+                          <div style={{ fontSize: "0.725rem", color: "var(--text-secondary)", fontStyle: "italic", lineHeight: 1.3 }}>
+                            &ldquo;{p.connection_notes}&rdquo;
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>Standalone Node</span>
+                    )}
                   </td>
                   <td>{p.phone_numbers.length > 0 ? p.phone_numbers.join(", ") : "-"}</td>
                   <td>{p.known_aliases.length > 0 ? p.known_aliases.join(", ") : "-"}</td>
@@ -415,28 +437,58 @@ export default function EntityExplorer({
               </tr>
             </thead>
             <tbody>
-              {relationships.filter(matchesFilter).map((r) => (
-                <tr key={r.id}>
-                  <td><strong>{r.person_a}</strong></td>
-                  <td><span className="mini-tag" style={{ background: "rgba(139, 92, 246, 0.15)", color: "#c084fc" }}>{r.relationship_type}</span></td>
-                  <td><strong>{r.person_b}</strong></td>
-                  <td>{r.description || "-"}</td>
-                  <td>
-                    <span className={`status-indicator-badge ${r.verification_status === "VERIFIED" ? "connected" : "disconnected"}`}>
-                      {r.verification_status}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => handleToggleVerification("relationships", r.id, r.verification_status)}
-                      disabled={updatingId === r.id}
-                      className="btn-action-small"
-                    >
-                      {r.verification_status === "VERIFIED" ? "Mark Unverified" : "Verify"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {relationships.filter(matchesFilter).map((r) => {
+                const isSaw = r.relationship_type === "SAW_SUSPECT" || r.relationship_type === "EYEWITNESS";
+                const isInf = r.relationship_type === "INFORMANT";
+                const isCo = r.relationship_type === "CO_ACCUSED" || r.relationship_type === "CO_CONSPIRATOR";
+                return (
+                  <tr key={r.id}>
+                    <td><strong>{r.person_a}</strong></td>
+                    <td>
+                      <span
+                        className="mini-tag"
+                        style={{
+                          background: isSaw
+                            ? "rgba(0, 242, 254, 0.15)"
+                            : isInf
+                            ? "rgba(168, 85, 247, 0.15)"
+                            : isCo
+                            ? "rgba(239, 68, 68, 0.15)"
+                            : "rgba(139, 92, 246, 0.15)",
+                          color: isSaw
+                            ? "#00f2fe"
+                            : isInf
+                            ? "#c084fc"
+                            : isCo
+                            ? "#f87171"
+                            : "#c084fc",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {r.relationship_type === "SAW_SUSPECT" ? "👁️ SAW_SUSPECT" : r.relationship_type === "INFORMANT" ? "🕵️ INFORMANT" : r.relationship_type}
+                      </span>
+                    </td>
+                    <td><strong>{r.person_b}</strong></td>
+                    <td style={{ maxWidth: "340px", fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                      {r.description || "-"}
+                    </td>
+                    <td>
+                      <span className={`status-indicator-badge ${r.verification_status === "VERIFIED" ? "connected" : "disconnected"}`}>
+                        {r.verification_status}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => handleToggleVerification("relationships", r.id, r.verification_status)}
+                        disabled={updatingId === r.id}
+                        className="btn-action-small"
+                      >
+                        {r.verification_status === "VERIFIED" ? "Mark Unverified" : "Verify"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

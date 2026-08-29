@@ -15,9 +15,20 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
+  Share2,
+  Eye,
+  Sparkles,
+  Link2,
 } from "lucide-react";
 import { investigationApi } from "@/lib/investigationApi";
-import { VerificationStatus, PersonStatus, RelationshipType } from "@/types/investigation";
+import {
+  VerificationStatus,
+  PersonStatus,
+  RelationshipType,
+  Person,
+  Location,
+  Vehicle,
+} from "@/types/investigation";
 
 export type EntityTypeTab =
   | "person"
@@ -35,6 +46,9 @@ interface DataEntryFormsProps {
   onClose: () => void;
   onSuccess: () => void;
   initialTab?: EntityTypeTab;
+  persons?: Person[];
+  locations?: Location[];
+  vehicles?: Vehicle[];
 }
 
 export default function DataEntryForms({
@@ -43,6 +57,9 @@ export default function DataEntryForms({
   onClose,
   onSuccess,
   initialTab = "person",
+  persons = [],
+  locations = [],
+  vehicles = [],
 }: DataEntryFormsProps) {
   const [activeTab, setActiveTab] = useState<EntityTypeTab>(initialTab);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -64,7 +81,17 @@ export default function DataEntryForms({
   const [personPhones, setPersonPhones] = useState("");
   const [personAliases, setPersonAliases] = useState("");
   const [personOccupation, setPersonOccupation] = useState("");
-  const [personStatus, setPersonStatus] = useState<PersonStatus>("SUSPECT");
+  const [personStatus, setPersonStatus] = useState<PersonStatus>("WITNESS");
+  
+  // Connection / Witness Observation State
+  const [connectToSuspect, setConnectToSuspect] = useState(true);
+  const [connectedPersonName, setConnectedPersonName] = useState("Raj Kumar");
+  const [isCustomSuspect, setIsCustomSuspect] = useState(false);
+  const [customConnectedName, setCustomConnectedName] = useState("");
+  const [connectionType, setConnectionType] = useState("SAW_SUSPECT");
+  const [connectionNotes, setConnectionNotes] = useState("");
+  const [sightingLocation, setSightingLocation] = useState("");
+  const [sightingDateTime, setSightingDateTime] = useState("");
 
   // 2. Call Record Form State
   const [callerNumber, setCallerNumber] = useState("");
@@ -155,18 +182,31 @@ export default function DataEntryForms({
     try {
       if (activeTab === "person") {
         if (!personName.trim()) throw new Error("Person name is required");
+        const finalConnectedPerson = connectToSuspect
+          ? (isCustomSuspect ? customConnectedName.trim() : connectedPersonName.trim())
+          : "";
+
         await investigationApi.addPerson(caseId, {
           ...auditData,
           name: personName.trim(),
           dob: personDob || undefined,
           gender: personGender,
           address: personAddress || undefined,
-          phone_numbers: personPhones ? personPhones.split(",").map((p) => p.trim()) : [],
-          known_aliases: personAliases ? personAliases.split(",").map((a) => a.trim()) : [],
+          phone_numbers: personPhones ? personPhones.split(",").map((p: string) => p.trim()) : [],
+          known_aliases: personAliases ? personAliases.split(",").map((a: string) => a.trim()) : [],
           occupation: personOccupation || undefined,
           status: personStatus,
+          connected_person_name: finalConnectedPerson || undefined,
+          connection_type: finalConnectedPerson ? connectionType : undefined,
+          connection_notes: connectionNotes.trim() || undefined,
+          sighting_location: sightingLocation.trim() || undefined,
+          sighting_date_time: sightingDateTime.trim() || undefined,
         });
         setPersonName("");
+        setConnectionNotes("");
+        setSightingLocation("");
+        setSightingDateTime("");
+        setCustomConnectedName("");
       } else if (activeTab === "call") {
         if (!callerNumber.trim() || !receiverNumber.trim())
           throw new Error("Both Caller and Receiver phone numbers are required");
@@ -210,7 +250,7 @@ export default function DataEntryForms({
           address: locAddress.trim() || locName.trim(),
           latitude: Number(locLat),
           longitude: Number(locLng),
-          associated_persons: locPersons ? locPersons.split(",").map((p) => p.trim()) : [],
+          associated_persons: locPersons ? locPersons.split(",").map((p: string) => p.trim()) : [],
         });
         setLocName("");
       } else if (activeTab === "vehicle") {
@@ -222,7 +262,7 @@ export default function DataEntryForms({
           make_model: vehModel.trim(),
           color: vehColor || undefined,
           owner_name: vehOwner.trim() || undefined,
-          associated_persons: vehDrivers ? vehDrivers.split(",").map((d) => d.trim()) : [],
+          associated_persons: vehDrivers ? vehDrivers.split(",").map((d: string) => d.trim()) : [],
         });
         setVehReg("");
       } else if (activeTab === "relationship") {
@@ -245,7 +285,7 @@ export default function DataEntryForms({
           org_type: orgType,
           registration_number: orgReg || undefined,
           address: orgAddress || undefined,
-          key_persons: orgPersons ? orgPersons.split(",").map((p) => p.trim()) : [],
+          key_persons: orgPersons ? orgPersons.split(",").map((p: string) => p.trim()) : [],
         });
         setOrgName("");
       } else if (activeTab === "evidence") {
@@ -427,6 +467,234 @@ export default function DataEntryForms({
                   onChange={(e) => setPersonOccupation(e.target.value)}
                   className="form-input"
                 />
+              </div>
+
+              {/* Connected Suspect & Witness Observation Section */}
+              <div
+                className="form-group full-width"
+                style={{
+                  background: "rgba(56, 189, 248, 0.05)",
+                  border: "1px solid rgba(56, 189, 248, 0.25)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "1rem 1.1rem",
+                  marginTop: "0.5rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.85rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <div style={{ background: "rgba(0, 242, 254, 0.15)", padding: "4px", borderRadius: "6px" }}>
+                      <Share2 size={16} style={{ color: "var(--accent-cyan)" }} />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--accent-cyan)" }}>
+                        🔗 Suspect Connection & Witness Observation (Knowledge Graph Link)
+                      </span>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "1px" }}>
+                        Directly connect this person to a suspect in the investigation (e.g. Eyewitness saw suspect, Informant lead, Co-accused, or Accomplice).
+                      </p>
+                    </div>
+                  </div>
+
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                    <input
+                      type="checkbox"
+                      checked={connectToSuspect}
+                      onChange={(e) => setConnectToSuspect(e.target.checked)}
+                      style={{ accentColor: "var(--accent-cyan)", width: 15, height: 15 }}
+                    />
+                    <span>Link to Suspect</span>
+                  </label>
+                </div>
+
+                {connectToSuspect && (
+                  <>
+                    <div className="form-section-grid" style={{ marginTop: "0.2rem" }}>
+                      <div className="form-group">
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: "22px" }}>
+                          <span className="form-label" style={{ margin: 0 }}>Target Suspect / Person *</span>
+                          <button
+                            type="button"
+                            onClick={() => setIsCustomSuspect(!isCustomSuspect)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--accent-cyan)",
+                              fontSize: "0.725rem",
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                            }}
+                          >
+                            {isCustomSuspect ? "Select from list" : "+ Custom name"}
+                          </button>
+                        </div>
+
+                        {isCustomSuspect ? (
+                          <input
+                            type="text"
+                            placeholder="Type target suspect name..."
+                            value={customConnectedName}
+                            onChange={(e) => setCustomConnectedName(e.target.value)}
+                            className="form-input"
+                            autoFocus
+                          />
+                        ) : (
+                          <select
+                            value={connectedPersonName}
+                            onChange={(e) => setConnectedPersonName(e.target.value)}
+                            className="form-select"
+                          >
+                            {persons.length > 0 ? (
+                              persons.map((p) => (
+                                <option key={p.id} value={p.name}>
+                                  👤 {p.name} ({p.status})
+                                </option>
+                              ))
+                            ) : (
+                              <>
+                                <option value="Raj Kumar">👤 Raj Kumar (SUSPECT)</option>
+                                <option value="Ahmed Khan">👤 Ahmed Khan (SUSPECT)</option>
+                                <option value="Ravi Teja">👤 Ravi Teja (SUSPECT)</option>
+                                <option value="Priya Kumar">👤 Priya Kumar (ASSOCIATE)</option>
+                              </>
+                            )}
+                          </select>
+                        )}
+                      </div>
+
+                      <div className="form-group">
+                        <div style={{ display: "flex", alignItems: "center", minHeight: "22px" }}>
+                          <span className="form-label" style={{ margin: 0 }}>Connection / Observation Type *</span>
+                        </div>
+                        <select
+                          value={connectionType}
+                          onChange={(e) => setConnectionType(e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="SAW_SUSPECT">👁️ SAW_SUSPECT — Saw suspect illicit activity / meeting</option>
+                          <option value="EYEWITNESS">👁️ EYEWITNESS — Direct scene witness statement</option>
+                          <option value="INFORMANT">🕵️ INFORMANT — Intelligence lead / tip-off</option>
+                          <option value="ASSOCIATE">🤝 ASSOCIATE — Criminal associate / partner</option>
+                          <option value="CO_ACCUSED">⚖️ CO_ACCUSED — Jointly indicted in FIR</option>
+                          <option value="VEHICLE_SIGHTING">🚗 VEHICLE_SIGHTING — Observed with vehicle</option>
+                          <option value="LOCATION_SIGHTING">📍 LOCATION_SIGHTING — Spotted at crime scene</option>
+                          <option value="MEETING_ATTENDEE">👥 MEETING_ATTENDEE — Secret meeting attendee</option>
+                          <option value="KNOWN_CONTACT">📱 KNOWN_CONTACT — Phone / digital contact</option>
+                          <option value="VICTIM_OF">⚠️ VICTIM_OF — Targeted by suspect</option>
+                          <option value="SPOUSE">👨‍👩‍👧 SPOUSE / FAMILY — Family member</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Quick Observation Statement Templates */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginTop: "0.15rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <Sparkles size={13} style={{ color: "var(--accent-cyan)" }} />
+                        <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>
+                          Quick Observation Templates (Click to insert statement):
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                        {[
+                          {
+                            label: "💰 Cash Handover",
+                            text: `Witness observed ${isCustomSuspect ? (customConnectedName || "the suspect") : connectedPersonName} exchanging a black cash bag / Hawala consignment with an unknown handler.`,
+                          },
+                          {
+                            label: "📍 Crime Scene Presence",
+                            text: `Witness identified ${isCustomSuspect ? (customConnectedName || "the suspect") : connectedPersonName} at the scene of incident during the critical time window.`,
+                          },
+                          {
+                            label: "🚗 Getaway Vehicle",
+                            text: `Observed ${isCustomSuspect ? (customConnectedName || "the suspect") : connectedPersonName} hurriedly entering vehicle TS09AB1234 and fleeing the area.`,
+                          },
+                          {
+                            label: "🗣️ Planning Meeting",
+                            text: `Witness overheard ${isCustomSuspect ? (customConnectedName || "the suspect") : connectedPersonName} coordinating financial routing and contraband logistics.`,
+                          },
+                          {
+                            label: "📦 Contraband Delivery",
+                            text: `Observed ${isCustomSuspect ? (customConnectedName || "the suspect") : connectedPersonName} taking delivery of illicit consignment at the loading dock.`,
+                          },
+                        ].map((tmpl, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setConnectionNotes(tmpl.text)}
+                            style={{
+                              background: "rgba(255, 255, 255, 0.04)",
+                              border: "1px solid rgba(56, 189, 248, 0.2)",
+                              borderRadius: "16px",
+                              padding: "0.3rem 0.65rem",
+                              fontSize: "0.725rem",
+                              color: "var(--text-primary)",
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.3rem",
+                              whiteSpace: "nowrap",
+                              transition: "all 0.15s ease",
+                            }}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.borderColor = "var(--accent-cyan)";
+                              e.currentTarget.style.background = "rgba(0, 242, 254, 0.12)";
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.2)";
+                              e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
+                            }}
+                          >
+                            <span>{tmpl.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="form-group full-width">
+                      <label className="form-label">
+                        Witness Observation / Incident Statement / Connection Notes *
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder='e.g. "Witness saw suspect Raj Kumar handing over cash bag to foreign contact outside Hotel Grand Banjara on 25-Aug at 10 PM"'
+                        value={connectionNotes}
+                        onChange={(e) => setConnectionNotes(e.target.value)}
+                        className="form-textarea"
+                      />
+                    </div>
+
+                    <div className="form-section-grid">
+                      <div className="form-group">
+                        <label className="form-label">Sighting / Incident Location (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Hotel Grand Banjara, Road No 12"
+                          value={sightingLocation}
+                          onChange={(e) => setSightingLocation(e.target.value)}
+                          className="form-input"
+                          list="case-locations-list"
+                        />
+                        <datalist id="case-locations-list">
+                          {locations.map((l) => (
+                            <option key={l.id} value={l.name} />
+                          ))}
+                        </datalist>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Sighting Date & Time (Optional)</label>
+                        <input
+                          type="datetime-local"
+                          value={sightingDateTime}
+                          onChange={(e) => setSightingDateTime(e.target.value)}
+                          className="form-input"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -778,27 +1046,43 @@ export default function DataEntryForms({
           {activeTab === "relationship" && (
             <div className="form-section-grid">
               <div className="form-group">
-                <label className="form-label">Person A *</label>
+                <label className="form-label">Person A (Origin / Observer) *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Vikram Rathore or Raj Kumar"
+                  value={relPersonA}
+                  onChange={(e) => setRelPersonA(e.target.value)}
+                  className="form-input"
+                  list="case-persons-list-a"
+                />
+                <datalist id="case-persons-list-a">
+                  {persons.map((p) => (
+                    <option key={`a-${p.id}`} value={p.name}>
+                      {p.name} ({p.status})
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Person B (Target / Suspect) *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Raj Kumar"
-                  value={relPersonA}
-                  onChange={(e) => setRelPersonA(e.target.value)}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Person B *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Priya Kumar"
                   value={relPersonB}
                   onChange={(e) => setRelPersonB(e.target.value)}
                   className="form-input"
+                  list="case-persons-list-b"
                 />
+                <datalist id="case-persons-list-b">
+                  {persons.map((p) => (
+                    <option key={`b-${p.id}`} value={p.name}>
+                      {p.name} ({p.status})
+                    </option>
+                  ))}
+                </datalist>
               </div>
 
               <div className="form-group">
@@ -808,23 +1092,31 @@ export default function DataEntryForms({
                   onChange={(e) => setRelType(e.target.value as RelationshipType)}
                   className="form-select"
                 >
-                  <option value="SPOUSE">Spouse</option>
-                  <option value="PARENT">Parent</option>
-                  <option value="CHILD">Child</option>
-                  <option value="SIBLING">Sibling</option>
-                  <option value="ASSOCIATE">Criminal Associate</option>
-                  <option value="CO_ACCUSED">Co-Accused</option>
-                  <option value="BUSINESS_PARTNER">Business Partner</option>
-                  <option value="GANG_MEMBER">Syndicate Member</option>
-                  <option value="LAWYER">Legal Counsel</option>
+                  <option value="SAW_SUSPECT">👁️ SAW_SUSPECT (Witness observed suspect doing illicit activity / meeting)</option>
+                  <option value="EYEWITNESS">👁️ EYEWITNESS (Eyewitness statement & testimony)</option>
+                  <option value="INFORMANT">🕵️ INFORMANT (Confidential intelligence tip-off)</option>
+                  <option value="ASSOCIATE">🤝 ASSOCIATE (Criminal associate / accomplice)</option>
+                  <option value="CO_ACCUSED">⚖️ CO_ACCUSED (Jointly indicted in FIR)</option>
+                  <option value="VEHICLE_SIGHTING">🚗 VEHICLE_SIGHTING (Observed with vehicle)</option>
+                  <option value="LOCATION_SIGHTING">📍 LOCATION_SIGHTING (Observed at crime scene)</option>
+                  <option value="MEETING_ATTENDEE">👥 MEETING_ATTENDEE (Secret meeting attendee)</option>
+                  <option value="BUSINESS_PARTNER">💼 BUSINESS_PARTNER (Business / Corporate partner)</option>
+                  <option value="KNOWN_CONTACT">📱 KNOWN_CONTACT (Phone / Digital contact)</option>
+                  <option value="SPOUSE">👨‍👩‍👧 SPOUSE (Family / Marriage)</option>
+                  <option value="PARENT">👨‍👧 PARENT</option>
+                  <option value="CHILD">👧 CHILD</option>
+                  <option value="SIBLING">👫 SIBLING</option>
+                  <option value="GANG_MEMBER">⚡ GANG_MEMBER (Syndicate member)</option>
+                  <option value="LAWYER">⚖️ LAWYER (Legal counsel)</option>
+                  <option value="VICTIM_OF">⚠️ VICTIM_OF (Targeted by suspect)</option>
                 </select>
               </div>
 
               <div className="form-group full-width">
-                <label className="form-label">Relationship Context & Findings</label>
+                <label className="form-label">Relationship Context, Findings & Witness Statement *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Married since 2012, joint signatory on shell company accounts"
+                  placeholder="e.g. Witness observed Person B exchanging cash at Hotel Grand Banjara on 25-Aug"
                   value={relDesc}
                   onChange={(e) => setRelDesc(e.target.value)}
                   className="form-input"

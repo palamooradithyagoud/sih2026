@@ -18,16 +18,25 @@ class PersonStatus(str, Enum):
 
 
 class RelationshipType(str, Enum):
+    SAW_SUSPECT = "SAW_SUSPECT"
+    EYEWITNESS = "EYEWITNESS"
+    INFORMANT = "INFORMANT"
+    ASSOCIATE = "ASSOCIATE"
+    ACCOMPLICE = "ACCOMPLICE"
+    CO_CONSPIRATOR = "CO_CONSPIRATOR"
+    CO_ACCUSED = "CO_ACCUSED"
+    VEHICLE_SIGHTING = "VEHICLE_SIGHTING"
+    LOCATION_SIGHTING = "LOCATION_SIGHTING"
+    MEETING_ATTENDEE = "MEETING_ATTENDEE"
+    KNOWN_CONTACT = "KNOWN_CONTACT"
+    BUSINESS_PARTNER = "BUSINESS_PARTNER"
     SPOUSE = "SPOUSE"
     PARENT = "PARENT"
     CHILD = "CHILD"
     SIBLING = "SIBLING"
-    ASSOCIATE = "ASSOCIATE"
-    BUSINESS_PARTNER = "BUSINESS_PARTNER"
-    KNOWN_CONTACT = "KNOWN_CONTACT"
     GANG_MEMBER = "GANG_MEMBER"
-    CO_ACCUSED = "CO_ACCUSED"
     LAWYER = "LAWYER"
+    VICTIM_OF = "VICTIM_OF"
 
 
 # Base Model for Officer Metadata
@@ -65,6 +74,13 @@ class PersonCreate(OfficerAuditBase):
     known_aliases: List[str] = Field(default_factory=list, example=["Raju", "RK"])
     occupation: Optional[str] = Field(None, example="Business / Real Estate")
     status: PersonStatus = PersonStatus.SUSPECT
+    
+    # Direct Investigation Connection & Witness Observation (e.g. Saw Suspect Raj Kumar)
+    connected_person_name: Optional[str] = Field(None, example="Raj Kumar")
+    connection_type: Optional[str] = Field("SAW_SUSPECT", example="SAW_SUSPECT")
+    connection_notes: Optional[str] = Field(None, example="Saw suspect at crime scene / doing illicit activity")
+    sighting_location: Optional[str] = Field(None, example="Hotel Grand Banjara, Rd No 12")
+    sighting_date_time: Optional[str] = Field(None, example="2026-08-25 22:30:00")
 
 
 class Person(PersonCreate):

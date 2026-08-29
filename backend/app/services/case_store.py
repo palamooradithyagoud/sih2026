@@ -394,6 +394,36 @@ class CaseRepository:
             **person_in.model_dump(),
         )
         self.persons.setdefault(case_id, []).append(person)
+
+        # If officer specified a connection to an existing suspect (e.g. Saw Suspect / Eyewitness to Raj Kumar)
+        if person_in.connected_person_name and person_in.connected_person_name.strip():
+            rel_type_str = (person_in.connection_type or "SAW_SUSPECT").upper()
+            try:
+                rel_type = RelationshipType(rel_type_str)
+            except ValueError:
+                rel_type = RelationshipType.SAW_SUSPECT
+
+            desc = person_in.connection_notes or f"Identified as {person.status.value} linked to {person_in.connected_person_name.strip()}"
+            if person_in.sighting_location:
+                desc += f" (Location: {person_in.sighting_location})"
+            if person_in.sighting_date_time:
+                desc += f" [Date/Time: {person_in.sighting_date_time}]"
+
+            rel = Relationship(
+                id=f"r_{uuid.uuid4().hex[:6]}",
+                case_id=case_id,
+                person_a=person.name,
+                person_b=person_in.connected_person_name.strip(),
+                relationship_type=rel_type,
+                description=desc,
+                source=person.source,
+                added_by_officer=person.added_by_officer,
+                verification_status=person.verification_status,
+                confidence_score=person.confidence_score,
+                created_at=datetime.now().isoformat(),
+            )
+            self.relationships.setdefault(case_id, []).append(rel)
+
         return person
 
     def get_persons(self, case_id: str) -> List[Person]:
@@ -602,6 +632,11 @@ class CaseRepository:
                     "phones": p.phone_numbers,
                     "aliases": p.known_aliases,
                     "source": p.source,
+                    "connected_suspect": p.connected_person_name,
+                    "connection_type": p.connection_type,
+                    "observation": p.connection_notes,
+                    "sighting_location": p.sighting_location,
+                    "sighting_date_time": p.sighting_date_time,
                 },
             )
 
@@ -838,7 +873,12 @@ class CaseRepository:
                     target=dst_id,
                     label=r.relationship_type.value,
                     verification_status=r.verification_status,
-                    properties={"desc": r.description},
+                    properties={
+                        "desc": r.description,
+                        "officer": r.added_by_officer,
+                        "confidence": r.confidence_score,
+                        "type": r.relationship_type.value,
+                    },
                 )
             )
 

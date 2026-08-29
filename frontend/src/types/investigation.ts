@@ -8,16 +8,25 @@ export type PersonStatus =
   | "VICTIM";
 
 export type RelationshipType =
+  | "SAW_SUSPECT"
+  | "EYEWITNESS"
+  | "INFORMANT"
+  | "ASSOCIATE"
+  | "ACCOMPLICE"
+  | "CO_CONSPIRATOR"
+  | "CO_ACCUSED"
+  | "VEHICLE_SIGHTING"
+  | "LOCATION_SIGHTING"
+  | "MEETING_ATTENDEE"
+  | "KNOWN_CONTACT"
+  | "BUSINESS_PARTNER"
   | "SPOUSE"
   | "PARENT"
   | "CHILD"
   | "SIBLING"
-  | "ASSOCIATE"
-  | "BUSINESS_PARTNER"
-  | "KNOWN_CONTACT"
   | "GANG_MEMBER"
-  | "CO_ACCUSED"
-  | "LAWYER";
+  | "LAWYER"
+  | "VICTIM_OF";
 
 export interface OfficerAuditBase {
   source: string;
@@ -50,6 +59,11 @@ export interface Person extends OfficerAuditBase {
   known_aliases: string[];
   occupation?: string;
   status: PersonStatus;
+  connected_person_name?: string;
+  connection_type?: string;
+  connection_notes?: string;
+  sighting_location?: string;
+  sighting_date_time?: string;
   created_at: string;
 }
 
