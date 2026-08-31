@@ -199,3 +199,62 @@ export interface CaseSummary {
   under_review_count: number;
   verification_percentage: number;
 }
+
+export interface IntegrationStatus {
+  groq: {
+    configured: boolean;
+    model: string;
+    provider: string;
+    ready: boolean;
+  };
+  postgres_supabase: {
+    connected: boolean;
+    is_supabase: boolean;
+    target: string;
+    details: Record<string, any>;
+  };
+  neo4j: {
+    connected: boolean;
+    uri: string;
+  };
+}
+
+export interface SampleDocumentMeta {
+  id: string;
+  title: string;
+  category: string;
+  station: string;
+  preview: string;
+}
+
+export interface DocumentCaseMeta {
+  case_number?: string;
+  title?: string;
+  summary?: string;
+  incident_date?: string;
+  jurisdiction?: string;
+  legal_sections?: string[];
+}
+
+export interface DocumentExtractionResult {
+  status: string;
+  case_id: string;
+  document_name: string;
+  document_type: string;
+  is_ai_generated: boolean;
+  model_used: string;
+  case_meta: DocumentCaseMeta;
+  added_counts: {
+    persons: number;
+    calls: number;
+    transactions: number;
+    locations: number;
+    vehicles: number;
+    organizations: number;
+    relationships: number;
+    evidence: number;
+  };
+  summary: CaseSummary;
+  graph: GraphData;
+}
+

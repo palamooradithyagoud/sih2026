@@ -191,6 +191,52 @@ class Organization(OrganizationCreate):
     created_at: str
 
 
+# --- Phone Schemas ---
+class PhoneCreate(OfficerAuditBase):
+    phone_number: str = Field(..., example="9876543210")
+    carrier: Optional[str] = Field("Jio", example="Jio")
+    owner_name: Optional[str] = Field(None, example="Raj Kumar")
+    imei: Optional[str] = Field(None, example="358912345678901")
+
+
+class Phone(PhoneCreate):
+    id: str
+    case_id: str
+    created_at: str
+
+
+# --- Bank Account Schemas ---
+class BankAccountCreate(OfficerAuditBase):
+    account_number: str = Field(..., example="HDFC-9912")
+    bank_name: str = Field("HDFC Bank", example="HDFC Bank")
+    account_holder: Optional[str] = Field(None, example="Raj Kumar")
+    branch: Optional[str] = Field(None, example="Banjara Hills, Hyderabad")
+    ifsc_code: Optional[str] = Field(None, example="HDFC0001234")
+
+
+class BankAccount(BankAccountCreate):
+    id: str
+    case_id: str
+    created_at: str
+
+
+# --- Event Schemas ---
+class EventCreate(OfficerAuditBase):
+    title: str = Field(..., example="Syndicate Secret Conclave")
+    event_type: str = Field("Meeting", example="Meeting")  # Meeting, Crime, Sighting, Seizure, Raid
+    date: str = Field(..., example="2026-08-25")
+    time: Optional[str] = Field("22:30:00", example="22:30:00")
+    description: Optional[str] = Field("Reported meeting between Raj Kumar and unknown associates.")
+    location_name: Optional[str] = Field("Hotel Grand Banjara", example="Hotel Grand Banjara")
+    associated_persons: List[str] = Field(default_factory=list, example=["Raj Kumar", "Ahmed Khan"])
+
+
+class Event(EventCreate):
+    id: str
+    case_id: str
+    created_at: str
+
+
 # --- Evidence Schemas ---
 class EvidenceCreate(OfficerAuditBase):
     title: str = Field(..., example="Bank Statement Analysis Aug 2026")

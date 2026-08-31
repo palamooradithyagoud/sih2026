@@ -10,10 +10,13 @@ import {
   BarChart3,
   ShieldCheck,
   UserCheck,
+  Brain,
+  Sparkles,
 } from "lucide-react";
 
 export type ActiveNavTab =
   | "dashboard"
+  | "ai-extractor"
   | "cases"
   | "investigation"
   | "evidence"
@@ -33,6 +36,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "ai-extractor", label: "AI Document Ingestion", icon: Brain, badge: "Groq 70B" },
     { id: "cases", label: "Cases", icon: FolderLock },
     { id: "investigation", label: "Investigation", icon: Search },
     { id: "evidence", label: "Evidence Vault", icon: FileText },
@@ -57,7 +61,7 @@ export default function Sidebar({
       <div className="sidebar-case-card">
         <div className="case-card-label">ACTIVE CASE FILE</div>
         <div className="case-card-number">{caseNumber}</div>
-        <div className="case-card-tag">Hyderabad Syndicate</div>
+        <div className="case-card-tag">{caseNumber === "NO CASE" ? "No Active Case" : "Active Investigation"}</div>
       </div>
 
       {/* Navigation Links */}
@@ -72,7 +76,22 @@ export default function Sidebar({
               className={`nav-button ${isActive ? "active" : ""}`}
             >
               <Icon size={18} className="nav-icon" />
-              <span>{item.label}</span>
+              <span style={{ flex: 1, textAlign: "left" }}>{item.label}</span>
+              {item.badge && (
+                <span
+                  style={{
+                    fontSize: "0.6rem",
+                    padding: "0.1rem 0.4rem",
+                    borderRadius: "999px",
+                    background: "rgba(6, 182, 212, 0.15)",
+                    color: "var(--accent-cyan)",
+                    border: "1px solid rgba(6, 182, 212, 0.3)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {item.badge}
+                </span>
+              )}
               {isActive && <div className="active-indicator" />}
             </button>
           );
@@ -85,8 +104,8 @@ export default function Sidebar({
           <UserCheck size={18} />
         </div>
         <div className="officer-info">
-          <div className="officer-name">Insp. Adithya</div>
-          <div className="officer-role">ID: 1024 • Lead Investigator</div>
+          <div className="officer-name">Investigator Portal</div>
+          <div className="officer-role">Crime Intelligence Analysis</div>
         </div>
       </div>
     </aside>

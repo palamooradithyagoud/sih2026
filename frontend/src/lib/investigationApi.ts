@@ -11,6 +11,9 @@ import {
   Evidence,
   GraphData,
   VerificationStatus,
+  IntegrationStatus,
+  SampleDocumentMeta,
+  DocumentExtractionResult,
 } from "@/types/investigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -133,4 +136,54 @@ export const investigationApi = {
         }),
       }
     ),
+
+  // Groq AI & Document Knowledge Graph Extraction
+  getIntegrationStatus: () =>
+    request<IntegrationStatus>(`${PREFIX}/integrations/status`),
+
+  getSampleDocuments: () =>
+    request<SampleDocumentMeta[]>(`${PREFIX}/documents/samples`),
+
+  uploadAndExtractDocument: async (formData: FormData): Promise<DocumentExtractionResult> => {
+    const res = await fetch(`${PREFIX}/documents/upload-and-extract`, {
+      method: "POST",
+      body: formData,
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const errorBody = await res.text();
+      throw new Error(`Extraction Error [${res.status}]: ${errorBody || res.statusText}`);
+    }
+    return res.json();
+  },
+
+  extractFromText: (payload: {
+    document_text: string;
+    document_name?: string;
+    document_type?: string;
+    case_id?: string;
+    groq_api_key?: string;
+  }) =>
+    request<DocumentExtractionResult>(`${PREFIX}/documents/extract-text`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  extractSampleDocument: (
+    sampleId: string,
+    caseId?: string,
+    groqApiKey?: string
+  ) => {
+    const params = new URLSearchParams();
+    if (caseId) params.append("case_id", caseId);
+    if (groqApiKey) params.append("groq_api_key", groqApiKey);
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+    return request<DocumentExtractionResult>(
+      `${PREFIX}/documents/sample-extract/${sampleId}${queryString}`,
+      {
+        method: "POST",
+      }
+    );
+  },
 };
+

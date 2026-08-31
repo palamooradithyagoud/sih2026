@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.db.neo4j import close_neo4j_driver
+from app.db.postgres import init_db
 
 # Setup logging
 logging.basicConfig(
@@ -18,6 +19,8 @@ logger = logging.getLogger("app.main")
 async def lifespan(app: FastAPI):
     """Lifespan context manager for application startup and shutdown events."""
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION}...")
+    # Initialize PostgreSQL / Supabase tables
+    init_db()
     yield
     logger.info("Shutting down application resources...")
     close_neo4j_driver()

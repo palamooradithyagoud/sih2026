@@ -64,20 +64,20 @@ export default function CaseDossierView({
   onOpenBulkImport,
   onNavigateTab,
 }: CaseDossierViewProps) {
-  const caseNumber = summary?.case_number || "CR-2026-00421";
-  const caseTitle = summary?.title || "Hyderabad Organized Crime & Hawala Syndicate";
-  const leadOfficer = summary?.lead_officer || "Insp. Adithya (Lead Investigator)";
-  const totalAmount = summary?.total_amount_transferred || 430000;
-  const verifiedPct = summary?.verification_percentage || 93.3;
+  const caseNumber = summary?.case_number || "NO CASE";
+  const caseTitle = summary?.title || "No Active Case File Selected";
+  const leadOfficer = summary?.lead_officer || "Investigating Officer";
+  const totalAmount = summary?.total_amount_transferred ?? 0;
+  const verifiedPct = summary?.verification_percentage ?? 0;
 
-  const totalSuspects = persons.filter((p) => p.status === "SUSPECT" || p.status === "PERSON_OF_INTEREST").length || 3;
-  const totalWitnesses = persons.filter((p) => p.status === "WITNESS" || p.status === "VICTIM").length || 2;
+  const totalSuspects = persons.filter((p) => p.status === "SUSPECT" || p.status === "PERSON_OF_INTEREST").length;
+  const totalWitnesses = persons.filter((p) => p.status === "WITNESS" || p.status === "VICTIM").length;
 
   const kpis = [
     {
       id: "persons",
       label: "Suspects & Persons",
-      value: persons.length || 5,
+      value: persons.length,
       subtext: `${totalSuspects} Suspects • ${totalWitnesses} Witnesses`,
       icon: User,
       color: "var(--accent-cyan)",
@@ -87,8 +87,8 @@ export default function CaseDossierView({
     {
       id: "calls",
       label: "CDR Intercepts",
-      value: calls.length || 2,
-      subtext: "HYD-TWR-884 Resolved",
+      value: calls.length,
+      subtext: calls.length > 0 ? "Tower Geo-Resolved" : "No Intercepts",
       icon: PhoneCall,
       color: "var(--accent-blue)",
       bgGlow: "rgba(56, 189, 248, 0.12)",
@@ -97,8 +97,8 @@ export default function CaseDossierView({
     {
       id: "finance",
       label: "Financial Flow",
-      value: `₹${(totalAmount / 100000).toFixed(2)}L`,
-      subtext: `${transactions.length || 2} Traced Transfers`,
+      value: totalAmount > 0 ? `₹${(totalAmount / 100000).toFixed(2)}L` : "₹0",
+      subtext: `${transactions.length} Traced Transfers`,
       icon: DollarSign,
       color: "var(--accent-amber)",
       bgGlow: "rgba(245, 158, 11, 0.12)",
@@ -107,8 +107,8 @@ export default function CaseDossierView({
     {
       id: "locations",
       label: "Crime Landmarks",
-      value: locations.length || 1,
-      subtext: "Grand Banjara Hotspot",
+      value: locations.length,
+      subtext: locations.length > 0 ? `${locations.length} Spots Identified` : "No Locations",
       icon: MapPin,
       color: "#f97316",
       bgGlow: "rgba(249, 115, 22, 0.12)",
@@ -117,18 +117,18 @@ export default function CaseDossierView({
     {
       id: "vehicles",
       label: "Vehicles Seized",
-      value: vehicles.length || 1,
-      subtext: "TS09AB1234 (Innova)",
+      value: vehicles.length,
+      subtext: vehicles.length > 0 ? `${vehicles.length} Vehicles Tracked` : "No Vehicles",
       icon: Car,
       color: "var(--accent-emerald)",
-      bgGlow: "rgba(16, 185, 129, 0.12)",
+      bgGlow: "rgba(160, 185, 129, 0.12)",
       tab: "investigation" as ActiveNavTab,
     },
     {
       id: "orgs",
       label: "Shell Fronts",
-      value: organizations.length || 1,
-      subtext: "Apex Global Logistics",
+      value: organizations.length,
+      subtext: organizations.length > 0 ? `${organizations.length} Shell Entities` : "No Entities",
       icon: Building2,
       color: "var(--accent-purple)",
       bgGlow: "rgba(168, 85, 247, 0.12)",
@@ -137,8 +137,8 @@ export default function CaseDossierView({
     {
       id: "evidence",
       label: "Evidence Exhibits",
-      value: evidence.length || 2,
-      subtext: "Custody Chain Verified",
+      value: evidence.length,
+      subtext: evidence.length > 0 ? "Custody Chain Verified" : "No Exhibits",
       icon: FileText,
       color: "#94a3b8",
       bgGlow: "rgba(148, 163, 184, 0.12)",
@@ -158,53 +158,43 @@ export default function CaseDossierView({
 
   const legalSections = [
     { code: "IPC 120-B", title: "Criminal Conspiracy", tag: "Conspiracy" },
-    { code: "IPC 420 & 468", title: "Cheating & Forgery of Invoices", tag: "Fraud" },
-    { code: "PMLA Sec 3 & 4", title: "Prevention of Money Laundering", tag: "Hawala" },
-    { code: "IT Act Sec 66D", title: "Cyber Personation via Burner SIMs", tag: "Cyber" },
-    { code: "NDPS Act 8(c)/21", title: "Illicit Contraband Routing Logistics", tag: "Trafficking" },
+    { code: "IPC 420 & 468", title: "Cheating & Forgery", tag: "Fraud" },
+    { code: "IT Act Sec 66D", title: "Cyber Personation & Electronic Records", tag: "Cyber" },
   ];
 
   const caseTimeline = [
-    {
-      date: "12-Aug-2026",
-      time: "09:30",
-      badge: "FIR REGISTERED",
+    ...evidence.map((e) => ({
+      date: e.date_obtained || "Seized Date",
+      time: "09:00",
+      badge: "EVIDENCE SEIZED",
       color: "#38bdf8",
-      title: "FIR No. 142/2026 Registered at Central Crime Station",
-      desc: "Inquiry initiated following FIU suspicious transaction report (STR) on layered money transfers.",
-    },
-    {
-      date: "18-Aug-2026",
-      time: "14:15",
+      title: e.title,
+      desc: e.description,
+    })),
+    ...transactions.map((t) => ({
+      date: t.date || "Txn Date",
+      time: t.time || "12:00",
+      badge: "FUND TRANSFER",
+      color: "#f59e0b",
+      title: `₹${t.amount.toLocaleString("en-IN")} via ${t.payment_type}`,
+      desc: `Transfer from ${t.sender_name} to ${t.receiver_name} (${t.bank_name || "Bank"}).`,
+    })),
+    ...calls.map((c) => ({
+      date: c.date || "Call Date",
+      time: c.time || "12:00",
       badge: "CDR INTERCEPT",
       color: "#a855f7",
-      title: "Encrypted Call Link Intercepted",
-      desc: "512s encrypted call between Raj Kumar (9876543210) & Ahmed Khan (9988776655) resolved at HYD-TWR-884.",
-    },
-    {
-      date: "20-Aug-2026",
-      time: "14:23",
-      badge: "BANK FREEZE",
-      color: "#f59e0b",
-      title: "₹2,50,000 Hawala Routing Conduit Traced",
-      desc: "Funds routed from HDFC-9912 into ICICI-4410 under pretext of logistics freight invoices.",
-    },
-    {
-      date: "25-Aug-2026",
-      time: "22:00",
-      badge: "WITNESS SIGHTING",
+      title: `Call: ${c.caller_name || c.caller_number} → ${c.receiver_name || c.receiver_number}`,
+      desc: `${c.duration_seconds}s call intercepted at ${c.cell_tower_id || "Cell Tower"}.`,
+    })),
+    ...locations.map((l) => ({
+      date: l.date || "Visit Date",
+      time: l.time || "12:00",
+      badge: "LOCATION SIGHTING",
       color: "#00f2fe",
-      title: "Witness Statement at Hotel Grand Banjara",
-      desc: "Witness Vikram Rathore observed Raj Kumar exchanging cash bag; getaway vehicle TS09AB1234 logged.",
-    },
-    {
-      date: "28-Aug-2026",
-      time: "11:00",
-      badge: "GRAPH UNIFIED",
-      color: "#10b981",
-      title: "Live Knowledge Graph Cross-Resolution",
-      desc: "Unified 5 persons, 2 phone lines, 2 bank accounts, and 1 shell entity with 93.3% verified evidentiary integrity.",
-    },
+      title: `Sighting at ${l.name}`,
+      desc: `${l.address || "Crime scene"} linked to ${(l.associated_persons || []).join(", ")}.`,
+    })),
   ];
 
   return (

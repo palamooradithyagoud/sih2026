@@ -36,175 +36,9 @@ interface SimNode extends GraphNode {
   iconType: string;
 }
 
-// Fallback seed graph dataset
-const DEFAULT_GRAPH_DATA: GraphData = {
-  nodes: [
-    {
-      id: "person_raj_kumar",
-      label: "Raj Kumar",
-      type: "Person",
-      subType: "SUSPECT",
-      verification_status: "VERIFIED",
-      properties: {
-        status: "PRIMARY_SUSPECT",
-        occupation: "Syndicate Controller / Real Estate",
-        phones: ["9876543210", "9848011223"],
-        aliases: ["Raju", "RK", "The Kingpin"],
-        source: "FIR No. 89/2026 & Interrogation",
-      },
-    },
-    {
-      id: "person_ahmed_khan",
-      label: "Ahmed Khan",
-      type: "Person",
-      subType: "SUSPECT",
-      verification_status: "VERIFIED",
-      properties: {
-        status: "KEY_ASSOCIATE",
-        occupation: "Transit Coordinator",
-        phones: ["9988776655"],
-        aliases: ["Akku Bhai"],
-        source: "CDR & Surveillance",
-      },
-    },
-    {
-      id: "person_priya_kumar",
-      label: "Priya Kumar",
-      type: "Person",
-      subType: "ASSOCIATE",
-      verification_status: "VERIFIED",
-      properties: {
-        status: "ASSOCIATE",
-        occupation: "Director / Architect",
-        phones: ["9701234567"],
-        aliases: [],
-        source: "Civil Registry",
-      },
-    },
-    {
-      id: "person_ravi_teja",
-      label: "Ravi Teja",
-      type: "Person",
-      subType: "SUSPECT",
-      verification_status: "UNDER_REVIEW",
-      properties: {
-        status: "PERSON_OF_INTEREST",
-        occupation: "Accountant",
-        phones: ["9123456780"],
-        aliases: ["Chota Ravi"],
-        source: "Informant Tip",
-      },
-    },
-    {
-      id: "veh_ts09ab1234",
-      label: "TS09AB1234 (Innova)",
-      type: "Vehicle",
-      subType: "SUV",
-      verification_status: "VERIFIED",
-      properties: {
-        reg: "TS09AB1234",
-        model: "Toyota Innova Crysta",
-        color: "Pearl White",
-      },
-    },
-    {
-      id: "loc_hotel_grand_banjara",
-      label: "Hotel Grand Banjara",
-      type: "Location",
-      subType: "Landmark",
-      verification_status: "VERIFIED",
-      properties: {
-        address: "Road No. 1, Banjara Hills, Hyderabad",
-        lat: 17.4156,
-        lng: 78.4750,
-      },
-    },
-    {
-      id: "org_apex_global_logistics",
-      label: "Apex Global Logistics",
-      type: "Organization",
-      subType: "Shell Company",
-      verification_status: "VERIFIED",
-      properties: {
-        reg: "CIN-U72200TG2020PTC145000",
-        address: "HITEC City, Hyderabad",
-      },
-    },
-  ],
-  links: [
-    {
-      id: "l1",
-      source: "person_raj_kumar",
-      target: "person_ahmed_khan",
-      label: "CALLED (512s)",
-      verification_status: "VERIFIED",
-      properties: { date: "2026-08-25", duration: 512, type: "Outgoing" },
-    },
-    {
-      id: "l2",
-      source: "person_raj_kumar",
-      target: "person_ahmed_khan",
-      label: "₹2,50,000",
-      verification_status: "VERIFIED",
-      properties: { amount: 250000, date: "2026-08-20", payment_type: "Bank Transfer" },
-    },
-    {
-      id: "l3",
-      source: "person_ahmed_khan",
-      target: "person_ravi_teja",
-      label: "₹1,80,000",
-      verification_status: "VERIFIED",
-      properties: { amount: 180000, date: "2026-08-21", payment_type: "UPI / IMPS" },
-    },
-    {
-      id: "l4",
-      source: "person_raj_kumar",
-      target: "person_priya_kumar",
-      label: "SPOUSE",
-      verification_status: "VERIFIED",
-      properties: { desc: "Married, joint assets" },
-    },
-    {
-      id: "l5",
-      source: "person_raj_kumar",
-      target: "veh_ts09ab1234",
-      label: "OWNS",
-      verification_status: "VERIFIED",
-      properties: {},
-    },
-    {
-      id: "l6",
-      source: "person_ahmed_khan",
-      target: "veh_ts09ab1234",
-      label: "USED_VEHICLE",
-      verification_status: "VERIFIED",
-      properties: {},
-    },
-    {
-      id: "l7",
-      source: "person_raj_kumar",
-      target: "loc_hotel_grand_banjara",
-      label: "VISITED",
-      verification_status: "VERIFIED",
-      properties: { date: "2026-08-25", time: "22:15:00" },
-    },
-    {
-      id: "l8",
-      source: "person_ahmed_khan",
-      target: "loc_hotel_grand_banjara",
-      label: "VISITED",
-      verification_status: "VERIFIED",
-      properties: { date: "2026-08-25", time: "22:15:00" },
-    },
-    {
-      id: "l9",
-      source: "person_raj_kumar",
-      target: "org_apex_global_logistics",
-      label: "DIRECTOR",
-      verification_status: "VERIFIED",
-      properties: {},
-    },
-  ],
+const EMPTY_GRAPH_DATA: GraphData = {
+  nodes: [],
+  links: [],
 };
 
 export default function NetworkGraphPreview({
@@ -216,7 +50,7 @@ export default function NetworkGraphPreview({
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [centerNodeId, setCenterNodeId] = useState<string>("person_raj_kumar");
+  const [centerNodeId, setCenterNodeId] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterType, setFilterType] = useState<string>("ALL");
   const [zoom, setZoom] = useState<number>(1);
@@ -236,7 +70,7 @@ export default function NetworkGraphPreview({
   const effectiveGraph =
     graphData && graphData.nodes && graphData.nodes.length > 0
       ? graphData
-      : DEFAULT_GRAPH_DATA;
+      : EMPTY_GRAPH_DATA;
 
   // Track parent resize
   useEffect(() => {
@@ -269,18 +103,18 @@ export default function NetworkGraphPreview({
     return effectiveGraph.nodes[0]?.id || "";
   }, [centerNodeId, effectiveGraph]);
 
-  // Spatial Organization: Fixed distinct radial positions around center
+  // Spatial Organization: Initial Layout based on entity connections
   useEffect(() => {
     const { width, height } = canvasDimensions;
     const centerX = width / 2;
     const centerY = height / 2;
     const targetCenterId = getPrimaryCenterId();
 
-    const nonCenterNodes = effectiveGraph.nodes.filter((n) => n.id !== targetCenterId);
     const nodesList: SimNode[] = [];
-
-    // 1. Center Target Node anchored right in the middle
+    const nonCenterNodes = effectiveGraph.nodes.filter((n) => n.id !== targetCenterId);
     const centerNode = effectiveGraph.nodes.find((n) => n.id === targetCenterId);
+
+    // 1. Center Target Node
     if (centerNode) {
       nodesList.push({
         ...centerNode,
@@ -288,50 +122,26 @@ export default function NetworkGraphPreview({
         y: centerY,
         vx: 0,
         vy: 0,
-        radius: 32, // Large focal hub
+        radius: 30,
         isCenter: true,
         pinned: true,
-        iconType: "PERSON",
+        iconType: centerNode.type.toUpperCase(),
       });
     }
 
-    // 2. Clear, Generous Spacing for Surrounding Nodes:
-    // We give every node a distinct, fixed angle and large distance so they NEVER bunch together.
+    // 2. Initial circular distribution with jitter to avoid symmetry lock
+    const count = nonCenterNodes.length;
     nonCenterNodes.forEach((n, idx) => {
-      let angle = 0;
-      let distance = 210; // Generous breathing room radius
-
-      if (n.id.includes("hotel") || n.type === "Location") {
-        angle = -Math.PI * 0.5; // Top (12 o'clock)
-        distance = 195;
-      } else if (n.id.includes("org") || n.type === "Organization") {
-        angle = -Math.PI * 0.15; // Top-Right (2 o'clock)
-        distance = 230;
-      } else if (n.id.includes("priya")) {
-        angle = Math.PI * 0.35; // Bottom-Right (4:30 o'clock)
-        distance = 210;
-      } else if (n.id.includes("veh") || n.type === "Vehicle") {
-        angle = Math.PI * 0.75; // Bottom-Left (7:30 o'clock)
-        distance = 220;
-      } else if (n.id.includes("ahmed")) {
-        angle = Math.PI * 0.98; // Mid-Left (9 o'clock)
-        distance = 190;
-      } else if (n.id.includes("ravi")) {
-        angle = Math.PI * 1.05; // Outer-Left (9:30 o'clock outer ring)
-        distance = 330; // Outer branch connected through Ahmed
-      } else {
-        const count = nonCenterNodes.length;
-        angle = (idx / count) * 2 * Math.PI;
-        distance = 210;
-      }
+      const angle = (idx / Math.max(count, 1)) * 2 * Math.PI + (idx % 2 === 0 ? 0.1 : -0.1);
+      const distance = n.type === "Transaction" || n.type === "Document" ? 260 : 200;
 
       nodesList.push({
         ...n,
-        x: centerX + Math.cos(angle) * distance,
-        y: centerY + Math.sin(angle) * distance,
+        x: centerX + Math.cos(angle) * distance + (Math.random() * 20 - 10),
+        y: centerY + Math.sin(angle) * distance + (Math.random() * 20 - 10),
         vx: 0,
         vy: 0,
-        radius: n.type === "Person" ? 24 : 20,
+        radius: n.type === "Person" ? 22 : n.type === "Transaction" ? 20 : 18,
         isCenter: false,
         pinned: false,
         iconType: n.type.toUpperCase(),
@@ -368,17 +178,19 @@ export default function NetworkGraphPreview({
       const visibleNodes = nodes.filter((n) => {
         if (filterType === "ALL") return true;
         if (filterType === "PERSON" && n.type === "Person") return true;
+        if (filterType === "FINANCIAL" && (n.type === "Transaction" || n.type === "BankAccount")) return true;
+        if (filterType === "DOCUMENT" && (n.type === "Document" || n.type === "Evidence")) return true;
         if (filterType === "VEHICLE" && n.type === "Vehicle") return true;
         if (filterType === "LOCATION" && n.type === "Location") return true;
         if (filterType === "ORGANIZATION" && n.type === "Organization") return true;
-        return n.isCenter; // Always keep center
+        return n.isCenter; // Always keep focal center
       });
 
       const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
 
-      // 1. Center node firmly anchored
+      // 1. Anchor center node
       nodes.forEach((node) => {
-        if (node.isCenter) {
+        if (node.isCenter && !draggedNode) {
           node.x = centerX;
           node.y = centerY;
           node.vx = 0;
@@ -386,15 +198,41 @@ export default function NetworkGraphPreview({
         }
       });
 
-      // 2. Repulsion between non-center nodes to prevent any clumping
+      // 2. Link Spring Attraction Force
+      links.forEach((link) => {
+        if (!visibleNodeIds.has(link.source) || !visibleNodeIds.has(link.target)) return;
+        const source = nodes.find((n) => n.id === link.source);
+        const target = nodes.find((n) => n.id === link.target);
+        if (!source || !target) return;
+
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const targetDist = 180; // Ideal link length
+
+        const springForce = (dist - targetDist) * 0.015;
+        const fx = (dx / dist) * springForce;
+        const fy = (dy / dist) * springForce;
+
+        if (!source.pinned && !source.isCenter) {
+          source.vx += fx;
+          source.vy += fy;
+        }
+        if (!target.pinned && !target.isCenter) {
+          target.vx -= fx;
+          target.vy -= fy;
+        }
+      });
+
+      // 3. Repulsion between all nodes
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const dx = nodes[j].x - nodes[i].x;
           const dy = nodes[j].y - nodes[i].y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const minDist = 160; // Generous separation
+          const minDist = 140;
           if (dist < minDist) {
-            const force = (minDist - dist) / dist * 0.06;
+            const force = ((minDist - dist) / dist) * 0.05;
             if (!nodes[i].pinned && !nodes[i].isCenter) {
               nodes[i].vx -= dx * force;
               nodes[i].vy -= dy * force;
@@ -407,18 +245,18 @@ export default function NetworkGraphPreview({
         }
       }
 
-      // 3. Update velocity & damping
+      // 4. Update velocity & damping
       nodes.forEach((node) => {
-        if (node.isCenter) return;
+        if (node.isCenter && !draggedNode) return;
 
-        node.vx *= 0.8;
-        node.vy *= 0.8;
+        node.vx *= 0.82;
+        node.vy *= 0.82;
         node.x += node.vx;
         node.y += node.vy;
 
         // Boundaries with padding
-        node.x = Math.max(50, Math.min(width - 50, node.x));
-        node.y = Math.max(50, Math.min(height - 50, node.y));
+        node.x = Math.max(60, Math.min(width - 60, node.x));
+        node.y = Math.max(60, Math.min(height - 60, node.y));
       });
 
       // --- CLEAR CANVAS & APPLY ZOOM/PAN ---
@@ -430,17 +268,15 @@ export default function NetworkGraphPreview({
       // Subtle Background Radar Grid
       const centerNode = nodes.find((n) => n.isCenter);
       if (centerNode) {
-        // Inner Orbit
         ctx.beginPath();
-        ctx.arc(centerNode.x, centerNode.y, 205, 0, 2 * Math.PI);
-        ctx.strokeStyle = "rgba(0, 242, 254, 0.07)";
+        ctx.arc(centerNode.x, centerNode.y, 180, 0, 2 * Math.PI);
+        ctx.strokeStyle = "rgba(0, 242, 254, 0.08)";
         ctx.lineWidth = 1.2;
         ctx.setLineDash([4, 6]);
         ctx.stroke();
 
-        // Outer Orbit
         ctx.beginPath();
-        ctx.arc(centerNode.x, centerNode.y, 330, 0, 2 * Math.PI);
+        ctx.arc(centerNode.x, centerNode.y, 300, 0, 2 * Math.PI);
         ctx.strokeStyle = "rgba(0, 242, 254, 0.04)";
         ctx.stroke();
         ctx.setLineDash([]);
@@ -469,9 +305,7 @@ export default function NetworkGraphPreview({
           const normalX = -dy / dist;
           const normalY = dx / dist;
 
-          // Bow multiple links between same nodes so they never overlap
-          const offsetAmount =
-            pairLinks.length > 1 ? (linkIndex === 0 ? 24 : -24) : 0;
+          const offsetAmount = pairLinks.length > 1 ? (linkIndex === 0 ? 22 : -22) : 0;
           const midX = (source.x + target.x) / 2 + normalX * offsetAmount;
           const midY = (source.y + target.y) / 2 + normalY * offsetAmount;
 
@@ -484,75 +318,64 @@ export default function NetworkGraphPreview({
           }
 
           // Link Styling by Type
-          if (link.label.startsWith("₹")) {
-            ctx.strokeStyle = "rgba(245, 158, 11, 0.85)"; // Gold for Hawala / Bank transfers
-            ctx.lineWidth = 2.8;
-          } else if (link.label.startsWith("CALLED")) {
-            ctx.strokeStyle = "rgba(56, 189, 248, 0.8)"; // Blue for Phone calls
-            ctx.lineWidth = 2.2;
-          } else if (link.label === "SAW_SUSPECT" || link.label === "EYEWITNESS") {
-            ctx.strokeStyle = "rgba(0, 242, 254, 0.9)"; // Neon Cyan for Eyewitness Observations
+          const labelUpper = link.label.toUpperCase();
+          if (labelUpper.includes("TRANSFERRED") || link.label.startsWith("₹")) {
+            ctx.strokeStyle = "rgba(245, 158, 11, 0.9)";
             ctx.lineWidth = 2.6;
-          } else if (link.label === "INFORMANT") {
-            ctx.strokeStyle = "rgba(168, 85, 247, 0.9)"; // Purple for Informant Intel
-            ctx.lineWidth = 2.5;
-          } else if (link.label === "CO_ACCUSED" || link.label === "CO_CONSPIRATOR") {
-            ctx.strokeStyle = "rgba(239, 68, 68, 0.85)"; // Red for Co-Accused
+          } else if (labelUpper.includes("CALLED")) {
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.85)";
+            ctx.lineWidth = 2.2;
+          } else if (labelUpper.includes("CO_ACCUSED") || labelUpper.includes("CO_CONSPIRATOR")) {
+            ctx.strokeStyle = "rgba(239, 68, 68, 0.85)";
             ctx.lineWidth = 2.4;
-          } else if (link.label === "SPOUSE" || link.label === "ASSOCIATE" || link.label === "MEETING_ATTENDEE") {
-            ctx.strokeStyle = "rgba(236, 72, 153, 0.75)"; // Pink for Family & Associates
+          } else if (labelUpper.includes("INFORMANT")) {
+            ctx.strokeStyle = "rgba(168, 85, 247, 0.9)";
+            ctx.lineWidth = 2.4;
+          } else if (labelUpper.includes("OWNS") || labelUpper.includes("USED")) {
+            ctx.strokeStyle = "rgba(16, 185, 129, 0.8)";
             ctx.lineWidth = 2;
-          } else if (link.label === "OWNS" || link.label === "USED_VEHICLE" || link.label === "VEHICLE_SIGHTING") {
-            ctx.strokeStyle = "rgba(16, 185, 129, 0.8)"; // Green for Vehicles
+          } else if (labelUpper.includes("VISITED")) {
+            ctx.strokeStyle = "rgba(249, 115, 22, 0.8)";
             ctx.lineWidth = 2;
           } else {
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+            ctx.strokeStyle = "rgba(148, 163, 184, 0.5)";
             ctx.lineWidth = 1.6;
           }
           ctx.stroke();
 
           // Link Label Pill Badge
-          const text = link.label === "SAW_SUSPECT" ? "👁️ SAW_SUSPECT" : link.label === "INFORMANT" ? "🕵️ INFORMANT" : link.label;
-          ctx.font = "bold 9.5px 'JetBrains Mono', monospace";
+          const text = link.label;
+          ctx.font = "bold 9px 'JetBrains Mono', monospace";
           const textWidth = ctx.measureText(text).width;
-          const boxW = textWidth + 16;
-          const boxH = 18;
+          const boxW = textWidth + 14;
+          const boxH = 17;
 
-          ctx.fillStyle = "rgba(9, 13, 23, 0.95)";
-          ctx.fillRect(midX - boxW / 2, midY - boxH / 2, boxW, boxH);
+          // Pill Background
+          ctx.fillStyle = "rgba(10, 15, 29, 0.94)";
+          ctx.beginPath();
+          ctx.roundRect(midX - boxW / 2, midY - boxH / 2, boxW, boxH, 4);
+          ctx.fill();
 
-          const isSaw = link.label === "SAW_SUSPECT" || link.label === "EYEWITNESS";
-          const isInf = link.label === "INFORMANT";
-          const isCo = link.label === "CO_ACCUSED" || link.label === "CO_CONSPIRATOR";
-          const isMoney = link.label.startsWith("₹");
-          const isCall = link.label.startsWith("CALLED");
-
-          ctx.strokeStyle = isMoney
-            ? "rgba(245, 158, 11, 0.6)"
-            : isSaw
-            ? "rgba(0, 242, 254, 0.8)"
-            : isInf
-            ? "rgba(168, 85, 247, 0.8)"
-            : isCo
+          ctx.strokeStyle = labelUpper.includes("TRANSFERRED") || link.label.startsWith("₹")
+            ? "rgba(245, 158, 11, 0.7)"
+            : labelUpper.includes("CALLED")
+            ? "rgba(56, 189, 248, 0.7)"
+            : labelUpper.includes("CO_ACCUSED") || labelUpper.includes("CO_CONSPIRATOR")
             ? "rgba(239, 68, 68, 0.7)"
-            : isCall
-            ? "rgba(56, 189, 248, 0.6)"
-            : "rgba(255, 255, 255, 0.25)";
+            : labelUpper.includes("INFORMANT")
+            ? "rgba(168, 85, 247, 0.7)"
+            : "rgba(255, 255, 255, 0.2)";
           ctx.lineWidth = 1;
-          ctx.strokeRect(midX - boxW / 2, midY - boxH / 2, boxW, boxH);
+          ctx.stroke();
 
-          ctx.fillStyle = isMoney
+          ctx.fillStyle = labelUpper.includes("TRANSFERRED") || link.label.startsWith("₹")
             ? "#fbbf24"
-            : isSaw
-            ? "#00f2fe"
-            : isInf
-            ? "#c084fc"
-            : isCo
-            ? "#f87171"
-            : isCall
+            : labelUpper.includes("CALLED")
             ? "#38bdf8"
-            : link.label === "SPOUSE"
-            ? "#f472b6"
+            : labelUpper.includes("CO_ACCUSED") || labelUpper.includes("CO_CONSPIRATOR")
+            ? "#f87171"
+            : labelUpper.includes("INFORMANT")
+            ? "#c084fc"
             : "#cbd5e1";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -571,13 +394,13 @@ export default function NetworkGraphPreview({
         // Central Hub Pulsing Rings
         if (isCentralHub) {
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 14, 0, 2 * Math.PI);
+          ctx.arc(node.x, node.y, node.radius + 12, 0, 2 * Math.PI);
           ctx.fillStyle = "rgba(244, 63, 94, 0.15)";
           ctx.fill();
 
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 7, 0, 2 * Math.PI);
-          ctx.strokeStyle = "rgba(0, 242, 254, 0.7)";
+          ctx.arc(node.x, node.y, node.radius + 6, 0, 2 * Math.PI);
+          ctx.strokeStyle = "rgba(0, 242, 254, 0.75)";
           ctx.lineWidth = 2;
           ctx.setLineDash([3, 4]);
           ctx.stroke();
@@ -587,9 +410,9 @@ export default function NetworkGraphPreview({
         // Selection / Search Glow
         if (isSelected || isMatched) {
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 8, 0, 2 * Math.PI);
+          ctx.arc(node.x, node.y, node.radius + 7, 0, 2 * Math.PI);
           ctx.fillStyle = isMatched
-            ? "rgba(244, 63, 94, 0.55)"
+            ? "rgba(244, 63, 94, 0.5)"
             : "rgba(0, 242, 254, 0.45)";
           ctx.fill();
         }
@@ -602,16 +425,22 @@ export default function NetworkGraphPreview({
           ctx.fillStyle = isCentralHub
             ? "#f43f5e"
             : node.subType === "SUSPECT"
-            ? "#e11d48"
+            ? "#ef4444"
             : "#0284c7";
+        } else if (node.type === "Transaction") {
+          ctx.fillStyle = "#eab308";
+        } else if (node.type === "Document" || node.type === "Evidence") {
+          ctx.fillStyle = "#64748b";
         } else if (node.type === "Vehicle") {
           ctx.fillStyle = "#10b981";
         } else if (node.type === "Location") {
-          ctx.fillStyle = "#f59e0b";
+          ctx.fillStyle = "#f97316";
         } else if (node.type === "Organization") {
           ctx.fillStyle = "#8b5cf6";
+        } else if (node.type === "Phone") {
+          ctx.fillStyle = "#06b6d4";
         } else {
-          ctx.fillStyle = "#64748b";
+          ctx.fillStyle = "#475569";
         }
         ctx.fill();
 
@@ -619,11 +448,11 @@ export default function NetworkGraphPreview({
           ? "#00f2fe"
           : isSelected
           ? "#ffffff"
-          : "rgba(255, 255, 255, 0.45)";
-        ctx.lineWidth = isCentralHub ? 3.5 : isSelected ? 3 : 1.8;
+          : "rgba(255, 255, 255, 0.55)";
+        ctx.lineWidth = isCentralHub ? 3.2 : isSelected ? 2.8 : 1.6;
         ctx.stroke();
 
-        // Node Inner Icon / Initial
+        // Node Icon
         ctx.font = isCentralHub ? "bold 13px sans-serif" : "bold 11px sans-serif";
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
@@ -631,36 +460,57 @@ export default function NetworkGraphPreview({
         const iconChar =
           node.type === "Person"
             ? "👤"
+            : node.type === "Transaction"
+            ? "💳"
+            : node.type === "Document" || node.type === "Evidence"
+            ? "📄"
             : node.type === "Vehicle"
             ? "🚗"
             : node.type === "Location"
             ? "📍"
             : node.type === "Organization"
             ? "🏢"
+            : node.type === "Phone"
+            ? "📱"
             : "●";
         ctx.fillText(iconChar, node.x, node.y);
 
-        // Central Crown Tag
+        // Focal Hub Star Tag
         if (isCentralHub) {
-          ctx.font = "bold 8.5px 'JetBrains Mono', monospace";
+          ctx.font = "bold 8px 'JetBrains Mono', monospace";
           ctx.fillStyle = "#00f2fe";
           ctx.textAlign = "center";
-          ctx.fillText("★ PRIMARY TARGET", node.x, node.y - node.radius - 10);
+          ctx.fillText("★ FOCAL HUB", node.x, node.y - node.radius - 8);
         }
 
-        // Label below node
+        // Label Pill Backdrop
+        const displayLabel = node.label.length > 28 ? node.label.substring(0, 26) + "..." : node.label;
         ctx.font = isCentralHub
-          ? "bold 12px 'Plus Jakarta Sans', sans-serif"
-          : "bold 10.5px 'Plus Jakarta Sans', sans-serif";
-        ctx.fillStyle = "#ffffff";
+          ? "bold 11.5px 'Plus Jakarta Sans', sans-serif"
+          : "bold 10px 'Plus Jakarta Sans', sans-serif";
+        const lblWidth = ctx.measureText(displayLabel).width;
+        const pillW = lblWidth + 12;
+        const pillH = 18;
+        const pillY = node.y + node.radius + 6;
+
+        ctx.fillStyle = "rgba(10, 15, 29, 0.92)";
+        ctx.beginPath();
+        ctx.roundRect(node.x - pillW / 2, pillY, pillW, pillH, 4);
+        ctx.fill();
+        ctx.strokeStyle = isSelected ? "rgba(0, 242, 254, 0.6)" : "rgba(255, 255, 255, 0.15)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = isSelected ? "#00f2fe" : "#ffffff";
         ctx.textAlign = "center";
-        ctx.textBaseline = "top";
-        ctx.fillText(node.label, node.x, node.y + node.radius + 6);
+        ctx.textBaseline = "middle";
+        ctx.fillText(displayLabel, node.x, pillY + pillH / 2);
 
         // SubType Tag Badge
-        ctx.font = "8px 'JetBrains Mono', monospace";
-        ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-        ctx.fillText(node.type.toUpperCase(), node.x, node.y + node.radius + 20);
+        const tagText = (node.subType || node.type).toUpperCase();
+        ctx.font = "bold 7.5px 'JetBrains Mono', monospace";
+        ctx.fillStyle = "rgba(148, 163, 184, 0.85)";
+        ctx.fillText(tagText, node.x, pillY + pillH + 8);
       });
 
       ctx.restore();
@@ -673,7 +523,7 @@ export default function NetworkGraphPreview({
       running = false;
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [effectiveGraph, canvasDimensions, zoom, pan, selectedNode, searchTerm, filterType]);
+  }, [effectiveGraph, canvasDimensions, zoom, pan, selectedNode, searchTerm, filterType, draggedNode]);
 
   // Click handler
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -792,8 +642,10 @@ export default function NetworkGraphPreview({
             Layer:
           </span>
           {[
-            { id: "ALL", label: "All Entities (7)" },
-            { id: "PERSON", label: "👤 Suspects" },
+            { id: "ALL", label: `All (${effectiveGraph.nodes.length})` },
+            { id: "PERSON", label: "👤 Persons" },
+            { id: "FINANCIAL", label: "💳 Financial" },
+            { id: "DOCUMENT", label: "📄 Evidence" },
             { id: "VEHICLE", label: "🚗 Vehicles" },
             { id: "LOCATION", label: "📍 Locations" },
             { id: "ORGANIZATION", label: "🏢 Shell Co." },
@@ -814,7 +666,7 @@ export default function NetworkGraphPreview({
             <Search size={13} style={{ color: "var(--text-muted)" }} />
             <input
               type="text"
-              placeholder="Search suspect..."
+              placeholder="Search entity..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input-inline"
@@ -885,9 +737,38 @@ export default function NetworkGraphPreview({
             }}
           />
 
+          {effectiveGraph.nodes.length === 0 && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(10, 15, 30, 0.75)",
+                backdropFilter: "blur(4px)",
+                color: "var(--text-muted)",
+                padding: "2rem",
+                textAlign: "center",
+                pointerEvents: "none",
+              }}
+            >
+              <Share2 size={36} style={{ color: "var(--accent-cyan)", opacity: 0.5, marginBottom: "0.75rem" }} />
+              <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                No Network Graph Entities Yet
+              </div>
+              <p style={{ fontSize: "0.8rem", maxWidth: "360px", margin: "0.4rem 0 0 0", lineHeight: 1.4 }}>
+                Upload an investigation document in AI Ingestion or add records manually to synthesize the connected network graph.
+              </p>
+            </div>
+          )}
+
           <div className="graph-legend">
             <div className="legend-item"><span className="dot dot-suspect" /> Suspect</div>
-            <div className="legend-item"><span className="dot dot-associate" /> Associate</div>
+            <div className="legend-item"><span className="dot dot-associate" /> Person</div>
+            <div className="legend-item"><span className="dot" style={{ background: "#eab308" }} /> Transfer</div>
+            <div className="legend-item"><span className="dot" style={{ background: "#64748b" }} /> Evidence</div>
             <div className="legend-item"><span className="dot dot-vehicle" /> Vehicle</div>
             <div className="legend-item"><span className="dot dot-location" /> Location</div>
             <div className="legend-item"><span className="dot dot-org" /> Organization</div>

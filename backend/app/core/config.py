@@ -24,7 +24,7 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    # PostgreSQL Relational DB Configuration
+    # PostgreSQL / Supabase Relational DB Configuration
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "postgres"
@@ -33,16 +33,25 @@ class Settings(BaseSettings):
     DATABASE_URL: str = (
         "postgresql://postgres:postgres@localhost:5432/criminal_investigation_db"
     )
+    
+    # Supabase Direct Settings (Optional alternative to DATABASE_URL)
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+    SUPABASE_DATABASE_URL: str = ""
 
     # Neo4j Graph DB Configuration
-    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_URI: str = "neo4j+s://ca4ca3b6.databases.neo4j.io"
     NEO4J_USERNAME: str = "neo4j"
     NEO4J_PASSWORD: str = "neo4jpassword"
     NEO4J_DATABASE: str = "neo4j"
+    NEO4J_QUERY_API_URL: str = "https://ca4ca3b6.databases.neo4j.io/db/neo4j/query/v2"
+    NEO4J_INSTANCE_ID: str = "ca4ca3b6"
 
-    # AI / LLM Configuration Placeholder
+    # AI / Groq LLM Configuration
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
     LLM_API_KEY: str = ""
-    LLM_MODEL: str = "gpt-4o-mini"
+    LLM_MODEL: str = "llama-3.3-70b-versatile"
 
     model_config = SettingsConfigDict(
         env_file=".env",

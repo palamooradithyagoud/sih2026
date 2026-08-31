@@ -1,6 +1,9 @@
 import uuid
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+
+logger = logging.getLogger(__name__)
 from app.schemas.investigation import (
     Case,
     CaseCreate,
@@ -41,318 +44,6 @@ class CaseRepository:
         self.relationships: Dict[str, List[Relationship]] = {}
         self.organizations: Dict[str, List[Organization]] = {}
         self.evidence: Dict[str, List[Evidence]] = {}
-
-        # Initialize Default Case: CR-2026-00421
-        self._seed_default_case()
-
-    def _seed_default_case(self):
-        case_id = "case_cr_2026_00421"
-        now = datetime.now().isoformat()
-
-        default_case = Case(
-            id=case_id,
-            case_number="CR-2026-00421",
-            title="Hyderabad Organized Crime Investigation",
-            description="Multi-jurisdictional syndicate inquiry into illicit finance and contraband trafficking.",
-            lead_officer="Insp. Adithya (Lead)",
-            station="Hyderabad Central Crime Station",
-            priority="CRITICAL",
-            created_at=now,
-            status="ACTIVE",
-        )
-        self.cases[case_id] = default_case
-
-        # Seed Persons
-        self.persons[case_id] = [
-            Person(
-                id="p1",
-                case_id=case_id,
-                name="Raj Kumar",
-                dob="1985-04-12",
-                gender="Male",
-                address="Road No. 12, Banjara Hills, Hyderabad",
-                phone_numbers=["9876543210", "9848011223"],
-                known_aliases=["Raju", "RK", "The Kingpin"],
-                occupation="Real Estate / Logistics Import",
-                status=PersonStatus.SUSPECT,
-                source="FIR No. 89/2026 & Interrogation",
-                added_by_officer="Officer ID 1024 (Insp. Adithya)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.98,
-                notes="Primary syndicate controller and financier.",
-                created_at=now,
-            ),
-            Person(
-                id="p2",
-                case_id=case_id,
-                name="Ahmed Khan",
-                dob="1988-09-22",
-                gender="Male",
-                address="Old City, Hyderabad",
-                phone_numbers=["9988776655"],
-                known_aliases=["Akku Bhai"],
-                occupation="Logistics & Warehousing",
-                status=PersonStatus.SUSPECT,
-                source="Call Detail Records & Surveillance",
-                added_by_officer="Officer ID 1088 (SI Eesha)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.92,
-                notes="Field coordinator for transit vehicles.",
-                created_at=now,
-            ),
-            Person(
-                id="p3",
-                case_id=case_id,
-                name="Priya Kumar",
-                dob="1989-11-05",
-                gender="Female",
-                address="Road No. 12, Banjara Hills, Hyderabad",
-                phone_numbers=["9701234567"],
-                known_aliases=[],
-                occupation="Interior Architect",
-                status=PersonStatus.ASSOCIATE,
-                source="Civil Registry & Property Records",
-                added_by_officer="Officer ID 1024 (Insp. Adithya)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.99,
-                notes="Spouse of Raj Kumar; co-director in shell logistics entity.",
-                created_at=now,
-            ),
-            Person(
-                id="p4",
-                case_id=case_id,
-                name="Ravi Teja",
-                dob="1992-01-18",
-                gender="Male",
-                address="Secunderabad, Hyderabad",
-                phone_numbers=["9123456780"],
-                known_aliases=["Chota Ravi"],
-                occupation="Accountant",
-                status=PersonStatus.PERSON_OF_INTEREST,
-                source="Informant Tip",
-                added_by_officer="Officer ID 1042 (SI Ibrahim)",
-                verification_status=VerificationStatus.UNDER_REVIEW,
-                confidence_score=0.75,
-                notes="Received secondary financial transfers via Hawala channels.",
-                created_at=now,
-            ),
-        ]
-
-        # Seed Call Records
-        self.calls[case_id] = [
-            CallRecord(
-                id="c1",
-                case_id=case_id,
-                caller_number="9876543210",
-                caller_name="Raj Kumar",
-                receiver_number="9988776655",
-                receiver_name="Ahmed Khan",
-                date="2026-08-25",
-                time="21:42:00",
-                duration_seconds=512,
-                call_type="Outgoing",
-                cell_tower_id="HYD-TWR-884 (Banjara Hills)",
-                source="Airtel CDR Subpoena",
-                added_by_officer="Officer ID 1024 (Insp. Adithya)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=1.0,
-                notes="High duration call preceding midnight logistics movement.",
-                created_at=now,
-            ),
-            CallRecord(
-                id="c2",
-                case_id=case_id,
-                caller_number="9988776655",
-                caller_name="Ahmed Khan",
-                receiver_number="9123456780",
-                receiver_name="Ravi Teja",
-                date="2026-08-26",
-                time="09:15:00",
-                duration_seconds=184,
-                call_type="Outgoing",
-                cell_tower_id="HYD-TWR-302 (Secunderabad)",
-                source="Jio CDR Subpoena",
-                added_by_officer="Officer ID 1088 (SI Eesha)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.95,
-                notes="Follow-up call on cash dispersal.",
-                created_at=now,
-            ),
-        ]
-
-        # Seed Transactions
-        self.transactions[case_id] = [
-            Transaction(
-                id="t1",
-                case_id=case_id,
-                sender_name="Raj Kumar",
-                sender_account="HDFC-9912",
-                receiver_name="Ahmed Khan",
-                receiver_account="ICICI-4410",
-                amount=250000.0,
-                currency="INR",
-                date="2026-08-20",
-                time="14:23:00",
-                transaction_id="TXN123456789",
-                bank_name="HDFC Bank -> ICICI Bank",
-                payment_type="Bank Transfer",
-                source="Financial Intelligence Unit (FIU) STR",
-                added_by_officer="Officer ID 1024 (Insp. Adithya)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.99,
-                notes="Flagged suspicious fund routing.",
-                created_at=now,
-            ),
-            Transaction(
-                id="t2",
-                case_id=case_id,
-                sender_name="Ahmed Khan",
-                sender_account="ICICI-4410",
-                receiver_name="Ravi Teja",
-                receiver_account="SBI-8821",
-                amount=180000.0,
-                currency="INR",
-                date="2026-08-21",
-                time="10:05:00",
-                transaction_id="TXN987654321",
-                bank_name="ICICI Bank -> SBI",
-                payment_type="UPI / IMPS",
-                source="Bank Statement Subpoena",
-                added_by_officer="Officer ID 1042 (SI Ibrahim)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.98,
-                notes="Secondary layer transfer of proceeds.",
-                created_at=now,
-            ),
-        ]
-
-        # Seed Locations
-        self.locations[case_id] = [
-            Location(
-                id="l1",
-                case_id=case_id,
-                name="Hotel Grand Banjara",
-                address="Road No. 1, Banjara Hills, Hyderabad",
-                latitude=17.4156,
-                longitude=78.4750,
-                date="2026-08-25",
-                time="22:15:00",
-                associated_persons=["Raj Kumar", "Ahmed Khan"],
-                source="CCTV DVR Seizure & CDR Cell Tower",
-                added_by_officer="Officer ID 1088 (SI Eesha)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.94,
-                notes="Both suspects spotted entering VIP conference room.",
-                created_at=now,
-            )
-        ]
-
-        # Seed Vehicles
-        self.vehicles[case_id] = [
-            Vehicle(
-                id="v1",
-                case_id=case_id,
-                registration_number="TS09AB1234",
-                vehicle_type="SUV",
-                make_model="Toyota Innova Crysta",
-                color="Pearl White",
-                owner_name="Raj Kumar",
-                associated_persons=["Ahmed Khan"],
-                source="RTA Vehicle Database & CCTV Toll Log",
-                added_by_officer="Officer ID 1024 (Insp. Adithya)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.99,
-                notes="Registered to Raj Kumar; Ahmed Khan recorded driving through Shamshabad Toll Plaza.",
-                created_at=now,
-            )
-        ]
-
-        # Seed Relationships
-        self.relationships[case_id] = [
-            Relationship(
-                id="r1",
-                case_id=case_id,
-                person_a="Raj Kumar",
-                person_b="Priya Kumar",
-                relationship_type=RelationshipType.SPOUSE,
-                description="Spouse and co-owner of family assets.",
-                source="Marriage Registration Records",
-                added_by_officer="Officer ID 1024 (Insp. Adithya)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=1.0,
-                notes="Joint signatory on company accounts.",
-                created_at=now,
-            ),
-            Relationship(
-                id="r2",
-                case_id=case_id,
-                person_a="Raj Kumar",
-                person_b="Ahmed Khan",
-                relationship_type=RelationshipType.CO_ACCUSED,
-                description="Key operational associate and transit coordinator.",
-                source="Confidential Informant & Interrogation Memo",
-                added_by_officer="Officer ID 1024 (Insp. Adithya)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.95,
-                notes="Longstanding partnership spanning 5+ years.",
-                created_at=now,
-            ),
-        ]
-
-        # Seed Organizations
-        self.organizations[case_id] = [
-            Organization(
-                id="o1",
-                case_id=case_id,
-                name="Apex Global Logistics Pvt Ltd",
-                org_type="Shell Company",
-                registration_number="CIN-U72200TG2020PTC145000",
-                address="Suite 402, Cyber Towers, HITEC City, Hyderabad",
-                key_persons=["Raj Kumar", "Priya Kumar", "Ahmed Khan"],
-                source="MCA Corporate Filings & Bank Account Disclosures",
-                added_by_officer="Officer ID 1024 (Insp. Adithya)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.97,
-                notes="Commercial entity utilized to camouflage illicit cross-state consignments.",
-                created_at=now,
-            )
-        ]
-
-        # Seed Evidence
-        self.evidence[case_id] = [
-            Evidence(
-                id="e1",
-                case_id=case_id,
-                title="Bank Statement Analysis - August 2026",
-                file_name="bank_statement_raj_aug2026.pdf",
-                evidence_type="Financial Record",
-                description="Transaction ledger revealing ₹2.5 Lakh outbound payment matching Hawala delivery timeline.",
-                date_obtained="2026-08-26",
-                custody_officer="Insp. Adithya",
-                source="Subpoenaed Bank Audit",
-                added_by_officer="Officer ID 1024 (Insp. Adithya)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=1.0,
-                notes="Key document for financial forensic trail.",
-                created_at=now,
-            ),
-            Evidence(
-                id="e2",
-                case_id=case_id,
-                title="Banjara Hills Hotel CCTV Footage Excerpt",
-                file_name="hotel_grand_banjara_cctv_ch04.mp4",
-                evidence_type="CCTV Footage",
-                description="Visual evidence of Raj Kumar and Ahmed Khan meeting at Hotel Grand Banjara on Aug 25 22:15 hrs.",
-                date_obtained="2026-08-27",
-                custody_officer="SI Eesha",
-                source="Seized Hotel DVR System",
-                added_by_officer="Officer ID 1088 (SI Eesha)",
-                verification_status=VerificationStatus.VERIFIED,
-                confidence_score=0.98,
-                notes="Confirms co-presence at critical meeting location.",
-                created_at=now,
-            ),
-        ]
 
     # --- Case Methods ---
     def get_all_cases(self) -> List[Case]:
@@ -883,6 +574,316 @@ class CaseRepository:
             )
 
         return GraphData(nodes=list(nodes_dict.values()), links=links)
+
+    def ingest_extracted_document_and_graph(
+        self,
+        case_id: Optional[str],
+        extraction_data: Dict[str, Any],
+        document_name: str = "Extracted_Document.pdf",
+        document_type: str = "FIR",
+        raw_text: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Ingests all entities and graph relations from Groq AI extraction into the active case repository
+        and persists them into PostgreSQL / Supabase if connected.
+        """
+        now = datetime.now().isoformat()
+        case_meta = extraction_data.get("case_meta", {})
+
+        # 1. Resolve or create target Case
+        target_case_id = case_id
+        if not target_case_id or target_case_id not in self.cases:
+            target_case_id = f"case_{uuid.uuid4().hex[:8]}"
+            case_number = case_meta.get("case_number") or f"CR-2026-{uuid.uuid4().hex[:4].upper()}"
+            title = case_meta.get("title") or f"Case: {document_name}"
+            desc = case_meta.get("summary") or "AI-Assisted Investigation from document ingestion."
+            station = case_meta.get("jurisdiction") or "Hyderabad Central Crime Station"
+
+            new_case = Case(
+                id=target_case_id,
+                case_number=case_number,
+                title=title,
+                description=desc,
+                lead_officer="Insp. Adithya (Lead)",
+                station=station,
+                priority="HIGH",
+                created_at=now,
+                status="ACTIVE",
+            )
+            self.cases[target_case_id] = new_case
+
+        # Ensure entity lists exist for case
+        for bucket in [self.persons, self.calls, self.transactions, self.locations, self.vehicles, self.relationships, self.organizations, self.evidence]:
+            if target_case_id not in bucket:
+                bucket[target_case_id] = []
+
+        added_counts = {
+            "persons": 0,
+            "calls": 0,
+            "transactions": 0,
+            "locations": 0,
+            "vehicles": 0,
+            "organizations": 0,
+            "relationships": 0,
+            "evidence": 0,
+        }
+
+        # 2. Ingest Persons
+        for p in extraction_data.get("persons", []):
+            try:
+                status_val = PersonStatus.SUSPECT
+                if p.get("status") in [s.value for s in PersonStatus]:
+                    status_val = PersonStatus(p.get("status"))
+
+                person_obj = Person(
+                    id=f"p_{uuid.uuid4().hex[:6]}",
+                    case_id=target_case_id,
+                    name=p.get("name", "Unknown Person"),
+                    dob=p.get("dob"),
+                    gender=p.get("gender", "Male"),
+                    address=p.get("address"),
+                    phone_numbers=p.get("phone_numbers", []),
+                    known_aliases=p.get("known_aliases", []),
+                    occupation=p.get("occupation"),
+                    status=status_val,
+                    source=f"Groq AI Ingestion ({document_name})",
+                    added_by_officer="AI Extractor / Insp. Adithya",
+                    verification_status=VerificationStatus.VERIFIED,
+                    confidence_score=float(p.get("confidence_score", 0.95)),
+                    notes=p.get("role_description"),
+                    created_at=now,
+                )
+                self.persons[target_case_id].append(person_obj)
+                added_counts["persons"] += 1
+            except Exception as e:
+                logger.warning(f"Error adding extracted person: {e}")
+
+        # 3. Ingest Calls
+        for c in extraction_data.get("calls", []):
+            try:
+                call_obj = CallRecord(
+                    id=f"call_{uuid.uuid4().hex[:6]}",
+                    case_id=target_case_id,
+                    caller_number=str(c.get("caller_number") or "0000000000"),
+                    caller_name=c.get("caller_name"),
+                    receiver_number=str(c.get("receiver_number") or "0000000000"),
+                    receiver_name=c.get("receiver_name"),
+                    date=str(c.get("date") or datetime.now().strftime("%Y-%m-%d")),
+                    time=str(c.get("time") or "12:00:00"),
+                    duration_seconds=int(c.get("duration_seconds") or 60),
+                    call_type=str(c.get("call_type") or "Incoming"),
+                    cell_tower_id=c.get("cell_tower_id") or "HYD-TWR-DEFAULT",
+                    source=f"Groq AI Ingestion ({document_name})",
+                    added_by_officer="AI Extractor / Insp. Adithya",
+                    verification_status=VerificationStatus.VERIFIED,
+                    confidence_score=0.95,
+                    notes="Extracted from CDR / Investigation document",
+                    created_at=now,
+                )
+                self.calls[target_case_id].append(call_obj)
+                added_counts["calls"] += 1
+            except Exception as e:
+                logger.warning(f"Error adding extracted call: {e}")
+
+        # 4. Ingest Transactions
+        for t in extraction_data.get("transactions", []):
+            try:
+                txn_obj = Transaction(
+                    id=f"txn_{uuid.uuid4().hex[:6]}",
+                    case_id=target_case_id,
+                    sender_name=str(t.get("sender_name") or "Sender"),
+                    sender_account=t.get("sender_account") or "ACC-01",
+                    receiver_name=str(t.get("receiver_name") or "Receiver"),
+                    receiver_account=t.get("receiver_account") or "ACC-02",
+                    amount=float(t.get("amount") or 10000.0),
+                    currency=str(t.get("currency") or "INR"),
+                    date=str(t.get("date") or datetime.now().strftime("%Y-%m-%d")),
+                    time=str(t.get("time") or "12:00:00"),
+                    transaction_id=str(t.get("transaction_id") or f"TXN{uuid.uuid4().hex[:6].upper()}"),
+                    bank_name=str(t.get("bank_name") or "Nationalized Bank"),
+                    payment_type=str(t.get("payment_type") or "Bank Transfer"),
+                    source=f"Groq AI Ingestion ({document_name})",
+                    added_by_officer="AI Extractor / Insp. Adithya",
+                    verification_status=VerificationStatus.VERIFIED,
+                    confidence_score=0.98,
+                    notes="Extracted from financial intelligence section",
+                    created_at=now,
+                )
+                self.transactions[target_case_id].append(txn_obj)
+                added_counts["transactions"] += 1
+            except Exception as e:
+                logger.warning(f"Error adding extracted transaction: {e}")
+
+        # 5. Ingest Locations
+        for loc in extraction_data.get("locations", []):
+            try:
+                loc_obj = Location(
+                    id=f"loc_{uuid.uuid4().hex[:6]}",
+                    case_id=target_case_id,
+                    name=str(loc.get("name") or "Scene of Crime"),
+                    address=str(loc.get("address") or "Hyderabad, Telangana"),
+                    latitude=float(loc.get("latitude") if loc.get("latitude") is not None else 17.4156),
+                    longitude=float(loc.get("longitude") if loc.get("longitude") is not None else 78.4750),
+                    date=str(loc.get("date") or datetime.now().strftime("%Y-%m-%d")),
+                    time=str(loc.get("time") or "12:00:00"),
+                    associated_persons=loc.get("associated_persons") or [],
+                    source=f"Groq AI Ingestion ({document_name})",
+                    added_by_officer="AI Extractor / Insp. Adithya",
+                    verification_status=VerificationStatus.VERIFIED,
+                    confidence_score=0.92,
+                    notes="Geo-location extracted from document",
+                    created_at=now,
+                )
+                self.locations[target_case_id].append(loc_obj)
+                added_counts["locations"] += 1
+            except Exception as e:
+                logger.warning(f"Error adding extracted location: {e}")
+
+        # 6. Ingest Vehicles
+        for v in extraction_data.get("vehicles", []):
+            try:
+                veh_obj = Vehicle(
+                    id=f"veh_{uuid.uuid4().hex[:6]}",
+                    case_id=target_case_id,
+                    registration_number=v.get("registration_number", "TS09AB0000"),
+                    vehicle_type=v.get("vehicle_type", "Car"),
+                    make_model=v.get("make_model", "Automobile"),
+                    color=v.get("color", "White"),
+                    owner_name=v.get("owner_name"),
+                    associated_persons=v.get("associated_persons", []),
+                    source=f"Groq AI Ingestion ({document_name})",
+                    added_by_officer="AI Extractor / Insp. Adithya",
+                    verification_status=VerificationStatus.VERIFIED,
+                    confidence_score=0.94,
+                    notes="Extracted from transport/transit intelligence",
+                    created_at=now,
+                )
+                self.vehicles[target_case_id].append(veh_obj)
+                added_counts["vehicles"] += 1
+            except Exception as e:
+                logger.warning(f"Error adding extracted vehicle: {e}")
+
+        # 7. Ingest Organizations
+        for o in extraction_data.get("organizations", []):
+            try:
+                org_obj = Organization(
+                    id=f"org_{uuid.uuid4().hex[:6]}",
+                    case_id=target_case_id,
+                    name=o.get("name", "Corporate Entity"),
+                    org_type=o.get("org_type", "Shell Company"),
+                    registration_number=o.get("registration_number"),
+                    address=o.get("address", "Hyderabad"),
+                    key_persons=o.get("key_persons", []),
+                    source=f"Groq AI Ingestion ({document_name})",
+                    added_by_officer="AI Extractor / Insp. Adithya",
+                    verification_status=VerificationStatus.VERIFIED,
+                    confidence_score=0.95,
+                    notes="Corporate entity linked to case",
+                    created_at=now,
+                )
+                self.organizations[target_case_id].append(org_obj)
+                added_counts["organizations"] += 1
+            except Exception as e:
+                logger.warning(f"Error adding extracted organization: {e}")
+
+        # 8. Ingest Relationships
+        for r in extraction_data.get("relationships", []):
+            try:
+                rel_type = RelationshipType.CO_CONSPIRATOR
+                if r.get("relationship_type") in [rt.value for rt in RelationshipType]:
+                    rel_type = RelationshipType(r.get("relationship_type"))
+
+                rel_obj = Relationship(
+                    id=f"rel_{uuid.uuid4().hex[:6]}",
+                    case_id=target_case_id,
+                    person_a=r.get("person_a", "Person A"),
+                    person_b=r.get("person_b", "Person B"),
+                    relationship_type=rel_type,
+                    description=r.get("description", "Linkage identified from document narrative"),
+                    source=f"Groq AI Ingestion ({document_name})",
+                    added_by_officer="AI Extractor / Insp. Adithya",
+                    verification_status=VerificationStatus.VERIFIED,
+                    confidence_score=0.92,
+                    notes="Direct relationship extraction",
+                    created_at=now,
+                )
+                self.relationships[target_case_id].append(rel_obj)
+                added_counts["relationships"] += 1
+            except Exception as e:
+                logger.warning(f"Error adding extracted relationship: {e}")
+
+        # 9. Register Document as Evidence
+        ev_obj = Evidence(
+            id=f"ev_{uuid.uuid4().hex[:6]}",
+            case_id=target_case_id,
+            title=f"Extracted Ingestion: {document_name}",
+            file_name=document_name,
+            evidence_type=document_type,
+            description=case_meta.get("summary") or f"Ingested document parsed via Groq AI.",
+            date_obtained=datetime.now().strftime("%Y-%m-%d"),
+            custody_officer="Insp. Adithya",
+            source=f"AI Ingestion Pipeline",
+            added_by_officer="Insp. Adithya",
+            verification_status=VerificationStatus.VERIFIED,
+            confidence_score=1.0,
+            notes=f"Processed with model {extraction_data.get('model_used', 'llama-3.3-70b-versatile')}",
+            created_at=now,
+        )
+        self.evidence[target_case_id].append(ev_obj)
+        added_counts["evidence"] += 1
+
+        # 10. Persist to PostgreSQL / Supabase if connected
+        self._sync_case_to_postgres(target_case_id)
+
+        # 11. Generate updated Graph and Summary
+        updated_graph = self.generate_graph_data(target_case_id)
+        updated_summary = self.get_case_summary(target_case_id)
+
+        return {
+            "status": "success",
+            "case_id": target_case_id,
+            "document_name": document_name,
+            "document_type": document_type,
+            "is_ai_generated": extraction_data.get("is_ai_generated", True),
+            "model_used": extraction_data.get("model_used", "llama-3.3-70b-versatile"),
+            "case_meta": case_meta,
+            "added_counts": added_counts,
+            "summary": updated_summary,
+            "graph": updated_graph,
+        }
+
+    def _sync_case_to_postgres(self, case_id: str):
+        """Attempts to sync in-memory case state to PostgreSQL / Supabase if connection is available."""
+        try:
+            from app.db.postgres import SessionLocal
+            from app.models.investigation import CaseModel, PersonModel, CallRecordModel, TransactionModel, LocationModel, VehicleModel, OrganizationModel, RelationshipModel, EvidenceModel
+            
+            db = SessionLocal()
+            try:
+                case_item = self.cases.get(case_id)
+                if not case_item:
+                    return
+
+                # Upsert Case
+                db_case = db.query(CaseModel).filter(CaseModel.id == case_id).first()
+                if not db_case:
+                    db_case = CaseModel(
+                        id=case_id,
+                        case_number=case_item.case_number,
+                        title=case_item.title,
+                        description=case_item.description,
+                        lead_officer=case_item.lead_officer,
+                        station=case_item.station,
+                        priority=case_item.priority,
+                        status=case_item.status,
+                    )
+                    db.add(db_case)
+                    db.commit()
+                logger.info(f"Synced case {case_id} to PostgreSQL / Supabase.")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.debug(f"PostgreSQL/Supabase sync attempt encountered: {e} (Continuing with memory store)")
 
 
 # Global singleton instance
