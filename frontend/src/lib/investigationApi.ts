@@ -210,5 +210,19 @@ export const investigationApi = {
       }
     );
   },
+
+  // Investigation Copilot (Phase 4)
+  queryCopilot: (caseId: string, question: string, officerId?: string) =>
+    request<import("@/types/investigation").CopilotQueryResponse>(
+      `${API_BASE}/api/v1/investigation/ai/query`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          case_id: caseId,
+          question,
+          officer_id: officerId || "Officer ID 1024 (Insp. Adithya)",
+        }),
+      }
+    ),
 };
 

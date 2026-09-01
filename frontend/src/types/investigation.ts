@@ -262,3 +262,51 @@ export interface DocumentExtractionResult {
   graph: GraphData;
 }
 
+// ── Phase 4: Investigation Copilot Types ────────────────────────────────────
+
+export type InvestigationIntentType =
+  | "find_call_connections"
+  | "find_associates"
+  | "find_person_connections"
+  | "find_shared_entities"
+  | "find_vehicle_connections"
+  | "find_location_connections"
+  | "find_organization_connections"
+  | "find_bank_transaction_connections"
+  | "find_case_connections"
+  | "find_shortest_verified_path"
+  | "investigation_timeline"
+  | "entity_summary";
+
+export interface ConnectionPathStep {
+  source_id: string;
+  source_name: string;
+  source_type: string;
+  relationship_type: string;
+  target_id: string;
+  target_name: string;
+  target_type: string;
+  verification_status: string;
+}
+
+export interface CopilotQueryRequest {
+  case_id: string;
+  question: string;
+  officer_id?: string;
+}
+
+export interface CopilotQueryResponse {
+  case_id: string;
+  question: string;
+  answer: string;
+  query_type: InvestigationIntentType;
+  confidence: "high" | "medium" | "low";
+  results: Record<string, any>[];
+  cypher: string;
+  sources: Record<string, any>[];
+  entities_found: string[];
+  relationships_traversed: string[];
+  connection_path: ConnectionPathStep[];
+  ambiguity_notice?: string;
+  graph_data?: GraphData;
+}

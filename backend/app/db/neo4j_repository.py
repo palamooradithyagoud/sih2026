@@ -194,32 +194,57 @@ class Neo4jRepository:
         """Safely executes a read-only Cypher query with parameters."""
         params = parameters or {}
         if getattr(self, "_neo4j_offline", False):
-            if "MATCH (p:Person)" in query:
-                return self._local_store.find_persons_by_name_or_phone(params.get("name", ""), params.get("phone"))
-            if "count(n) AS cnt" in query:
-                ent_id = params.get("id", "")
-                exists = self._local_store.check_entity_exists("Case", ent_id) or self._local_store.check_entity_exists("Node", ent_id)
-                return [{"cnt": 1 if exists else 0}]
-            return []
+            return self._fallback_local_read(query, params)
         try:
             with self._get_session() as session:
                 result = session.run(query, params)
                 if hasattr(result, "data") and callable(result.data):
                     return result.data()
                 return [record.data() if hasattr(record, "data") and callable(record.data) else record for record in result]
-        except (ServiceUnavailable, Neo4jRepositoryError) as e:
+        except (ServiceUnavailable, Neo4jRepositoryError, Exception) as e:
             logger.warning(f"Neo4j service unavailable during read ({e}). Switching to LocalGraphStore.")
             self._neo4j_offline = True
-            if "MATCH (p:Person)" in query:
-                return self._local_store.find_persons_by_name_or_phone(params.get("name", ""), params.get("phone"))
-            if "count(n) AS cnt" in query:
-                ent_id = params.get("id", "")
-                exists = self._local_store.check_entity_exists("Case", ent_id) or self._local_store.check_entity_exists("Node", ent_id)
-                return [{"cnt": 1 if exists else 0}]
-            return []
-        except Neo4jError as e:
-            logger.error(f"Neo4j Cypher read error: {e.message} (Code: {e.code})")
-            raise Neo4jRepositoryError(f"Graph query failed: {e.message}") from e
+            return self._fallback_local_read(query, params)
+
+    def _fallback_local_read(self, query: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        q_upper = query.upper()
+        case_id = params.get("case_id") or ""
+
+        if "MATCH (P:PERSON)-[:APPEARS_IN]->(C:CASE" in q_upper or "WHERE SIZE($NAME_FRAGMENT) = 0" in q_upper:
+            name_frag = (params.get("name_fragment") or params.get("person_name") or "").lower()
+            persons = self._local_store.get_persons_for_case(case_id) if case_id else []
+            matched = [
+                {"id": p["id"], "full_name": p["name"]}
+                for p in persons
+                if not name_frag or name_frag in p["name"].lower()
+            ]
+            return matched[:params.get("limit", 20)]
+
+        if "CALLED" in q_upper:
+            person_name = (params.get("person_name") or params.get("name") or params.get("person_a") or "").lower()
+            calls = self._local_store.get_calls_for_case(case_id) if case_id else []
+            if person_name:
+                calls = [
+                    c for c in calls
+                    if person_name in c.get("caller_name", "").lower() or person_name in c.get("receiver_name", "").lower()
+                ]
+            return calls[:params.get("limit", 50)]
+
+        if "TRANSFERRED" in q_upper or "TRANSACTION" in q_upper:
+            txns = self._local_store.get_transactions_for_case(case_id) if case_id else []
+            return txns[:params.get("limit", 50)]
+
+        if "SHARED" in q_upper or "C_OTHER" in q_upper:
+            current_id = params.get("current_case_id") or case_id
+            hist_id = params.get("historical_case_id")
+            return self._local_store.find_shared_entities(current_id, hist_id) if current_id else []
+
+        if "COUNT(" in q_upper:
+            ent_id = params.get("id", "")
+            exists = self.check_entity_exists("Case", ent_id) or self.check_entity_exists("Node", ent_id)
+            return [{"cnt": 1 if exists else 0}]
+
+        return []
 
     def _execute_write(
         self, query: str, parameters: Optional[Dict[str, Any]] = None
@@ -237,13 +262,10 @@ class Neo4jRepository:
         except ConstraintError as e:
             logger.warning(f"Neo4j constraint violation: {e.message}")
             raise DuplicateEntityError(f"Constraint violation: {e.message}") from e
-        except (ServiceUnavailable, Neo4jRepositoryError) as e:
+        except (ServiceUnavailable, Neo4jRepositoryError, Exception) as e:
             logger.warning(f"Neo4j service unavailable during write ({e}). Switching to LocalGraphStore.")
             self._neo4j_offline = True
             return []
-        except Neo4jError as e:
-            logger.error(f"Neo4j Cypher write error: {e.message} (Code: {e.code})")
-            raise Neo4jRepositoryError(f"Graph transaction failed: {e.message}") from e
 
 
     def _validate_label(self, label: str) -> str:
@@ -253,10 +275,14 @@ class Neo4jRepository:
         return label
 
     def _validate_relationship_type(self, rel_type: str) -> str:
-        """Validates relationship type, fallback to ASSOCIATED_WITH if custom."""
-        rel_type_upper = rel_type.strip().upper().replace(" ", "_")
+        """Validates relationship type against authorized whitelist."""
+        if not rel_type or not str(rel_type).strip():
+            raise InvalidRelationshipTypeError("Relationship type cannot be empty.")
+        rel_type_upper = str(rel_type).strip().upper().replace(" ", "_")
         if rel_type_upper not in ALLOWED_RELATIONSHIP_TYPES:
-            return "ASSOCIATED_WITH"
+            raise InvalidRelationshipTypeError(
+                f"Unauthorized relationship type: '{rel_type}'. Must be one of {ALLOWED_RELATIONSHIP_TYPES}"
+            )
         return rel_type_upper
 
 
@@ -283,10 +309,18 @@ class Neo4jRepository:
 
     def check_entity_exists(self, label: str, entity_id: str) -> bool:
         """Checks if a node of the given label and ID exists."""
-        safe_label = self._validate_label(label)
-        query = f"MATCH (n:{safe_label} {{id: $id}}) RETURN count(n) AS cnt"
-        records = self._execute_read(query, {"id": entity_id})
-        return bool(records and records[0].get("cnt", 0) > 0)
+        if getattr(self, "_neo4j_offline", False):
+            return self._local_store.check_entity_exists(label, entity_id)
+        try:
+            safe_label = self._validate_label(label)
+            query = f"MATCH (n:{safe_label} {{id: $id}}) RETURN count(n) AS cnt"
+            records = self._execute_read(query, {"id": entity_id})
+            if records and records[0].get("cnt", 0) > 0:
+                return True
+            return self._local_store.check_entity_exists(label, entity_id)
+        except Exception:
+            self._neo4j_offline = True
+            return self._local_store.check_entity_exists(label, entity_id)
 
     # ------------------------------------------------------------------------
     # Schema Constraints & Indexes (No Sample Data)
@@ -357,23 +391,38 @@ class Neo4jRepository:
             "updated_at": now_iso,
         }
 
-        query = """
-        CREATE (c:Case $props)
-        RETURN c
-        """
-        records = self._execute_write(query, {"props": props})
-        if not records:
-            raise Neo4jRepositoryError(f"Failed to create Case '{case_id}'.")
-        return records[0]["c"]
+        local_res = self._local_store.create_case(props)
+
+        if not getattr(self, "_neo4j_offline", False):
+            try:
+                query = """
+                CREATE (c:Case $props)
+                RETURN c
+                """
+                records = self._execute_write(query, {"props": props})
+                if records and records[0].get("c"):
+                    return records[0]["c"]
+            except Exception as e:
+                logger.warning(f"Neo4j create_case failed: {e}. Using LocalGraphStore.")
+                self._neo4j_offline = True
+
+        return local_res
 
     def get_case(self, case_id: str) -> Optional[Dict[str, Any]]:
         """Retrieves a single Case node by ID."""
-        query = """
-        MATCH (c:Case {id: $case_id})
-        RETURN c
-        """
-        records = self._execute_read(query, {"case_id": case_id})
-        return records[0]["c"] if records else None
+        if getattr(self, "_neo4j_offline", False):
+            return self._local_store.get_case(case_id)
+        try:
+            query = """
+            MATCH (c:Case {id: $case_id})
+            RETURN c
+            """
+            records = self._execute_read(query, {"case_id": case_id})
+            if records and records[0].get("c"):
+                return records[0]["c"]
+        except Exception:
+            self._neo4j_offline = True
+        return self._local_store.get_case(case_id)
 
     def list_cases(
         self,
@@ -382,21 +431,28 @@ class Neo4jRepository:
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """Lists cases with optional case_type or status filters."""
-        query = """
-        MATCH (c:Case)
-        WHERE ($case_type IS NULL OR c.case_type = $case_type)
-          AND ($status IS NULL OR c.status = $status)
-        RETURN c
-        ORDER BY c.created_at DESC
-        LIMIT $limit
-        """
-        params = {
-            "case_type": case_type.upper() if case_type else None,
-            "status": status.upper() if status else None,
-            "limit": limit,
-        }
-        records = self._execute_read(query, params)
-        return [r["c"] for r in records]
+        if getattr(self, "_neo4j_offline", False):
+            return self._local_store.list_cases(case_type=case_type, status=status, limit=limit)
+        try:
+            query = """
+            MATCH (c:Case)
+            WHERE ($case_type IS NULL OR c.case_type = $case_type)
+              AND ($status IS NULL OR c.status = $status)
+            RETURN c
+            ORDER BY c.created_at DESC
+            LIMIT $limit
+            """
+            params = {
+                "case_type": case_type.upper() if case_type else None,
+                "status": status.upper() if status else None,
+                "limit": limit,
+            }
+            records = self._execute_read(query, params)
+            if records:
+                return [r["c"] for r in records if "c" in r]
+        except Exception:
+            self._neo4j_offline = True
+        return self._local_store.list_cases(case_type=case_type, status=status, limit=limit)
 
     def get_case_summary(self, case_id: str) -> Dict[str, Any]:
         """
@@ -657,12 +713,20 @@ class Neo4jRepository:
             "updated_at": now_iso,
         }
 
-        query = """
-        CREATE (ph:Phone $props)
-        RETURN ph
-        """
-        records = self._execute_write(query, {"props": props})
-        return records[0]["ph"]
+        local_res = self._local_store.create_phone(props)
+        if not getattr(self, "_neo4j_offline", False):
+            try:
+                query = """
+                CREATE (ph:Phone $props)
+                RETURN ph
+                """
+                records = self._execute_write(query, {"props": props})
+                if records and records[0].get("ph"):
+                    return records[0]["ph"]
+            except Exception as e:
+                logger.warning(f"Neo4j create_phone failed: {e}. Using LocalGraphStore.")
+                self._neo4j_offline = True
+        return local_res
 
     def link_phone_to_person(
         self,
@@ -691,21 +755,29 @@ class Neo4jRepository:
             "source": source,
             "created_at": now_iso,
         }
+        local_res = {"relationship_id": rel_id, "case_id": case_id}
 
-        query = """
-        MATCH (p:Person {id: $person_id})
-        MATCH (ph:Phone {id: $phone_id})
-        MERGE (p)-[r:OWNS {case_id: $case_id}]->(ph)
-        SET r += $props
-        RETURN r
-        """
-        records = self._execute_write(query, {
-            "person_id": person_id,
-            "phone_id": phone_id,
-            "case_id": case_id,
-            "props": props,
-        })
-        return records[0]["r"]
+        if not getattr(self, "_neo4j_offline", False):
+            try:
+                query = """
+                MATCH (p:Person {id: $person_id})
+                MATCH (ph:Phone {id: $phone_id})
+                MERGE (p)-[r:OWNS {case_id: $case_id}]->(ph)
+                SET r += $props
+                RETURN r
+                """
+                records = self._execute_write(query, {
+                    "person_id": person_id,
+                    "phone_id": phone_id,
+                    "case_id": case_id,
+                    "props": props,
+                })
+                if records and records[0].get("r"):
+                    return records[0]["r"]
+            except Exception as e:
+                logger.warning(f"Neo4j link_phone_to_person failed: {e}. Using LocalGraphStore.")
+                self._neo4j_offline = True
+        return local_res
 
     def create_call_relationship(
         self,
@@ -745,18 +817,27 @@ class Neo4jRepository:
             "created_at": call_data.get("created_at") or now_iso,
         }
 
-        query = """
-        MATCH (p1:Person {id: $caller_id})
-        MATCH (p2:Person {id: $receiver_id})
-        CREATE (p1)-[r:CALLED $props]->(p2)
-        RETURN r
-        """
-        records = self._execute_write(query, {
-            "caller_id": caller_person_id,
-            "receiver_id": receiver_person_id,
-            "props": props,
-        })
-        return records[0]["r"]
+        local_res = self._local_store.create_call_relationship(caller_person_id, receiver_person_id, call_data)
+
+        if not getattr(self, "_neo4j_offline", False):
+            try:
+                query = """
+                MATCH (p1:Person {id: $caller_id})
+                MATCH (p2:Person {id: $receiver_id})
+                CREATE (p1)-[r:CALLED $props]->(p2)
+                RETURN r
+                """
+                records = self._execute_write(query, {
+                    "caller_id": caller_person_id,
+                    "receiver_id": receiver_person_id,
+                    "props": props,
+                })
+                if records and records[0].get("r"):
+                    return records[0]["r"]
+            except Exception as e:
+                logger.warning(f"Neo4j create_call_relationship failed: {e}. Using LocalGraphStore.")
+                self._neo4j_offline = True
+        return local_res
 
     # ========================================================================
     # VEHICLE OPERATIONS
@@ -1198,9 +1279,9 @@ class Neo4jRepository:
         Creates a validated, whitelisted relationship between two entities.
         Strictly rejects arbitrary relationship strings from user input.
         """
+        rel_type = self._validate_relationship_type(relationship_type)
         src_label = self._validate_label(source_entity_type)
         dst_label = self._validate_label(target_entity_type)
-        rel_type = self._validate_relationship_type(relationship_type)
 
         if not self.check_entity_exists(src_label, source_entity_id):
             raise EntityNotFoundError(f"Source {src_label} '{source_entity_id}' not found.")
@@ -1237,9 +1318,9 @@ class Neo4jRepository:
         metadata: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Internal helper to create a validated relationship between two nodes."""
+        safe_rel = self._validate_relationship_type(rel_type)
         safe_src = self._validate_label(source_label)
         safe_dst = self._validate_label(target_label)
-        safe_rel = self._validate_relationship_type(rel_type)
 
         if not self.check_entity_exists(safe_src, source_id):
             raise EntityNotFoundError(f"{safe_src} '{source_id}' not found.")
@@ -1267,18 +1348,38 @@ class Neo4jRepository:
             if k not in props and isinstance(v, (str, int, float, bool, list)):
                 props[k] = v
 
-        query = f"""
-        MATCH (s:{safe_src} {{id: $source_id}})
-        MATCH (t:{safe_dst} {{id: $target_id}})
-        CREATE (s)-[r:{safe_rel} $props]->(t)
-        RETURN r
-        """
-        records = self._execute_write(query, {
-            "source_id": source_id,
-            "target_id": target_id,
-            "props": props,
-        })
-        return records[0]["r"]
+        local_res = {"relationship_id": rel_id, "case_id": props.get("case_id", "")}
+        cid = props.get("case_id")
+        if cid:
+            clean_props = {k: v for k, v in props.items() if k not in ("relationship_id", "case_id")}
+            self._local_store.create_relationship(
+                relationship_id=rel_id,
+                source_entity_id=source_id,
+                target_entity_id=target_id,
+                relationship_type=safe_rel,
+                case_id=cid,
+                **clean_props
+            )
+
+        if not getattr(self, "_neo4j_offline", False):
+            try:
+                query = f"""
+                MATCH (s:{safe_src} {{id: $source_id}})
+                MATCH (t:{safe_dst} {{id: $target_id}})
+                CREATE (s)-[r:{safe_rel} $props]->(t)
+                RETURN r
+                """
+                records = self._execute_write(query, {
+                    "source_id": source_id,
+                    "target_id": target_id,
+                    "props": props,
+                })
+                if records and records[0].get("r"):
+                    return records[0]["r"]
+            except Exception as e:
+                logger.warning(f"Neo4j _create_binary_relation failed: {e}. Using LocalGraphStore.")
+                self._neo4j_offline = True
+        return local_res
 
     # ========================================================================
     # GRAPH RETRIEVAL (CASE-SCOPED)
@@ -1840,3 +1941,117 @@ _apply_fallback_to_repo(Neo4jRepository)
 
 # Global singleton instance
 neo4j_repo = Neo4jRepository()
+
+
+# ============================================================================
+# COPILOT HELPER METHODS (Phase 4) — added as standalone functions that
+# delegate to the singleton so the fallback decorator still applies.
+# ============================================================================
+
+def copilot_find_persons_in_case(
+    case_id: str,
+    name_fragment: str = "",
+    limit: int = 20,
+) -> List[Dict[str, Any]]:
+    """
+    Returns a list of Person nodes in a given case, optionally filtered by
+    a name fragment (case-insensitive CONTAINS match).
+    Used by the EntityAmbiguityResolver.
+    """
+    query = """
+MATCH (p:Person)-[:APPEARS_IN]->(c:Case {id: $case_id})
+WHERE size($name_fragment) = 0 OR toLower(p.full_name) CONTAINS toLower($name_fragment)
+RETURN p.id AS id, p.full_name AS full_name
+ORDER BY p.full_name ASC
+LIMIT $limit
+"""
+    return neo4j_repo._execute_read(
+        query, {"case_id": case_id, "name_fragment": name_fragment, "limit": limit}
+    )
+
+
+def copilot_get_shortest_path(
+    case_id: str,
+    person_a_name: str,
+    person_b_name: str,
+    max_hops: int = 3,
+    verification_statuses: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Finds the shortest verified path between two named persons within a case.
+    Returns a list of path records with path_nodes, path_rels, and path_length.
+    """
+    statuses = verification_statuses or ["VERIFIED", "UNDER_REVIEW"]
+    hops = min(max_hops, 3)
+    query = f"""
+MATCH (a:Person)-[:APPEARS_IN]->(c:Case {{id: $case_id}})
+WHERE toLower(a.full_name) CONTAINS toLower($person_a)
+MATCH (b:Person)-[:APPEARS_IN]->(c)
+WHERE toLower(b.full_name) CONTAINS toLower($person_b)
+  AND a.id <> b.id
+MATCH path = shortestPath((a)-[*1..{hops}]->(b))
+WHERE all(r IN relationships(path) WHERE
+  (r.case_id = $case_id OR r.case_id IS NULL)
+  AND (r.verification_status IN $statuses OR r.verification_status IS NULL))
+RETURN
+  [n IN nodes(path) | {{
+    id: n.id,
+    name: coalesce(n.full_name, n.name, n.number, n.registration_number),
+    type: labels(n)[0]
+  }}] AS path_nodes,
+  [r IN relationships(path) | {{
+    type: type(r),
+    verification_status: coalesce(r.verification_status, 'VERIFIED')
+  }}] AS path_rels,
+  length(path) AS path_length
+ORDER BY path_length ASC
+LIMIT 5
+"""
+    return neo4j_repo._execute_read(
+        query,
+        {
+            "case_id": case_id,
+            "person_a": person_a_name,
+            "person_b": person_b_name,
+            "statuses": statuses,
+        },
+    )
+
+
+def copilot_get_timeline(
+    case_id: str,
+    person_name: str = "",
+    verification_statuses: Optional[List[str]] = None,
+    limit: int = 50,
+) -> List[Dict[str, Any]]:
+    """
+    Returns a chronological timeline of call and transaction events for
+    an optional named person within a case.
+    """
+    statuses = verification_statuses or ["VERIFIED", "UNDER_REVIEW"]
+    query = """
+MATCH (p:Person)-[:APPEARS_IN]->(c:Case {id: $case_id})
+WHERE size($person_name) = 0 OR toLower(p.full_name) CONTAINS toLower($person_name)
+WITH p
+OPTIONAL MATCH (p)-[r:CALLED {case_id: $case_id}]->(p2:Person)
+WHERE r.verification_status IN $statuses
+WITH p, collect({
+  event_type: 'CALL',
+  event_time: r.timestamp,
+  actor: p.full_name,
+  target: p2.full_name,
+  detail: toString(r.duration_seconds),
+  verification_status: r.verification_status
+}) AS calls
+RETURN calls
+LIMIT $limit
+"""
+    return neo4j_repo._execute_read(
+        query,
+        {
+            "case_id": case_id,
+            "person_name": person_name,
+            "statuses": statuses,
+            "limit": limit,
+        },
+    )

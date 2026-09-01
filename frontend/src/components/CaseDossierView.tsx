@@ -533,7 +533,7 @@ export default function CaseDossierView({
       subtext: `${totalSuspects} Suspects • ${totalWitnesses} Witnesses`,
       icon: User,
       color: "var(--accent-cyan)",
-      bgGlow: "rgba(0, 242, 254, 0.12)",
+      bgGlow: "#eff6ff",
       tab: "investigation" as ActiveNavTab,
     },
     {
@@ -543,7 +543,7 @@ export default function CaseDossierView({
       subtext: calls.length > 0 ? "Tower Geo-Resolved" : "No Intercepts",
       icon: PhoneCall,
       color: "var(--accent-blue)",
-      bgGlow: "rgba(56, 189, 248, 0.12)",
+      bgGlow: "#eff6ff",
       tab: "investigation" as ActiveNavTab,
     },
     {
@@ -553,7 +553,7 @@ export default function CaseDossierView({
       subtext: `${transactions.length} Traced Transfers`,
       icon: DollarSign,
       color: "var(--accent-amber)",
-      bgGlow: "rgba(245, 158, 11, 0.12)",
+      bgGlow: "#fffbeb",
       tab: "investigation" as ActiveNavTab,
     },
     {
@@ -566,7 +566,7 @@ export default function CaseDossierView({
           : "No Locations",
       icon: MapPin,
       color: "#f97316",
-      bgGlow: "rgba(249, 115, 22, 0.12)",
+      bgGlow: "#fff7ed",
       tab: "investigation" as ActiveNavTab,
     },
     {
@@ -579,7 +579,7 @@ export default function CaseDossierView({
           : "No Vehicles",
       icon: Car,
       color: "var(--accent-emerald)",
-      bgGlow: "rgba(160, 185, 129, 0.12)",
+      bgGlow: "#ecfdf5",
       tab: "investigation" as ActiveNavTab,
     },
     {
@@ -592,7 +592,7 @@ export default function CaseDossierView({
           : "No Entities",
       icon: Building2,
       color: "var(--accent-purple)",
-      bgGlow: "rgba(168, 85, 247, 0.12)",
+      bgGlow: "#f3e8ff",
       tab: "investigation" as ActiveNavTab,
     },
     {
@@ -603,7 +603,7 @@ export default function CaseDossierView({
         evidence.length > 0 ? "Custody Chain Verified" : "No Exhibits",
       icon: FileText,
       color: "#94a3b8",
-      bgGlow: "rgba(148, 163, 184, 0.12)",
+      bgGlow: "#f8fafc",
       tab: "evidence" as ActiveNavTab,
     },
     {
@@ -613,7 +613,7 @@ export default function CaseDossierView({
       subtext: "Officer Corroborated",
       icon: ShieldCheck,
       color: "var(--accent-emerald)",
-      bgGlow: "rgba(16, 185, 129, 0.15)",
+      bgGlow: "#ecfdf5",
       tab: "analytics" as ActiveNavTab,
     },
   ];
@@ -674,8 +674,7 @@ export default function CaseDossierView({
       <div
         className="section-card"
         style={{
-          background:
-            "linear-gradient(135deg, rgba(14, 20, 34, 0.95), rgba(12, 16, 27, 0.98))",
+          background: "rgba(13, 18, 30, 0.9)",
           border: "1px solid rgba(0, 242, 254, 0.25)",
           padding: "1.1rem 1.25rem",
           display: "flex",
@@ -740,7 +739,7 @@ export default function CaseDossierView({
                 style={{
                   fontSize: "1.15rem",
                   fontWeight: 800,
-                  color: "var(--text-primary)",
+                  color: "#ffffff",
                   marginTop: "0.2rem",
                 }}
               >
@@ -770,17 +769,17 @@ export default function CaseDossierView({
         {/* Dynamic Narrative Box: What this specific case is about */}
         <div
           style={{
-            background: "rgba(0, 0, 0, 0.35)",
-            border: "1px solid var(--border-color)",
+            background: "rgba(20, 28, 48, 0.7)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "var(--radius-sm)",
             padding: "0.75rem 0.95rem",
             fontSize: "0.825rem",
-            color: "var(--text-secondary)",
+            color: "#cbd5e1",
             lineHeight: 1.5,
           }}
         >
           <p style={{ margin: 0 }}>
-            <strong style={{ color: "var(--text-primary)" }}>
+            <strong style={{ color: "#ffffff" }}>
               📌 Case Overview & Intelligence Brief:{" "}
             </strong>
             <span>{overviewText}</span>
@@ -792,7 +791,7 @@ export default function CaseDossierView({
               gap: "0.5rem",
               marginTop: "0.6rem",
               paddingTop: "0.55rem",
-              borderTop: "1px solid var(--border-subtle)",
+              borderTop: "1px solid rgba(255, 255, 255, 0.1)",
               fontSize: "0.75rem",
             }}
           >
@@ -800,7 +799,7 @@ export default function CaseDossierView({
               <span style={{ color: "var(--accent-cyan)", fontWeight: 700 }}>
                 🎯 Primary Objective:{" "}
               </span>
-              <span style={{ color: "var(--text-muted)" }}>
+              <span style={{ color: "#94a3b8" }}>
                 {primaryObjectiveText}
               </span>
             </div>
@@ -808,7 +807,7 @@ export default function CaseDossierView({
               <span style={{ color: "var(--accent-amber)", fontWeight: 700 }}>
                 ⚡ Key Evidence:{" "}
               </span>
-              <span style={{ color: "var(--text-muted)" }}>
+              <span style={{ color: "#94a3b8" }}>
                 {keyEvidenceText}
               </span>
             </div>
@@ -816,7 +815,7 @@ export default function CaseDossierView({
               <span style={{ color: "var(--accent-emerald)", fontWeight: 700 }}>
                 🛡️ Authority & Station:{" "}
               </span>
-              <span style={{ color: "var(--text-muted)" }}>
+              <span style={{ color: "#94a3b8" }}>
                 {authorityText}
               </span>
             </div>
@@ -840,7 +839,7 @@ export default function CaseDossierView({
               onClick={() => onNavigateTab(kpi.tab)}
               style={{
                 background: "rgba(14, 20, 34, 0.85)",
-                border: "1px solid var(--border-color)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
                 borderRadius: "var(--radius-sm)",
                 padding: "0.75rem 0.85rem",
                 display: "flex",
@@ -873,7 +872,7 @@ export default function CaseDossierView({
                   style={{
                     fontSize: "0.7rem",
                     fontWeight: 600,
-                    color: "var(--text-secondary)",
+                    color: "#cbd5e1",
                     letterSpacing: "0.02em",
                   }}
                 >
@@ -916,7 +915,7 @@ export default function CaseDossierView({
               <span
                 style={{
                   fontSize: "0.675rem",
-                  color: "var(--text-muted)",
+                  color: "#94a3b8",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -942,7 +941,7 @@ export default function CaseDossierView({
           className="section-card"
           style={{
             background: "rgba(14, 20, 34, 0.8)",
-            border: "1px solid var(--border-color)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
             padding: "1rem 1.15rem",
             display: "flex",
             flexDirection: "column",
@@ -971,13 +970,13 @@ export default function CaseDossierView({
                   style={{
                     fontSize: "0.925rem",
                     fontWeight: 700,
-                    color: "var(--text-primary)",
+                    color: "#ffffff",
                   }}
                 >
                   Case Investigation File • {caseNumber}
                 </h3>
                 <span
-                  style={{ fontSize: "0.725rem", color: "var(--text-muted)" }}
+                  style={{ fontSize: "0.725rem", color: "#94a3b8" }}
                 >
                   {caseNumber} • {stationName}
                 </span>
@@ -1007,14 +1006,14 @@ export default function CaseDossierView({
               background: "rgba(0, 0, 0, 0.25)",
               padding: "0.65rem 0.75rem",
               borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border-subtle)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
               fontSize: "0.775rem",
             }}
           >
             <div>
               <span
                 style={{
-                  color: "var(--text-muted)",
+                  color: "#94a3b8",
                   display: "block",
                   fontSize: "0.675rem",
                 }}
@@ -1028,35 +1027,35 @@ export default function CaseDossierView({
             <div>
               <span
                 style={{
-                  color: "var(--text-muted)",
+                  color: "#94a3b8",
                   display: "block",
                   fontSize: "0.675rem",
                 }}
               >
                 SUPERVISING BODY
               </span>
-              <strong style={{ color: "var(--text-primary)" }}>
+              <strong style={{ color: "#ffffff" }}>
                 {supervisingBody}
               </strong>
             </div>
             <div>
               <span
                 style={{
-                  color: "var(--text-muted)",
+                  color: "#94a3b8",
                   display: "block",
                   fontSize: "0.675rem",
                 }}
               >
                 DATE REGISTERED
               </span>
-              <strong style={{ color: "var(--text-primary)" }}>
+              <strong style={{ color: "#ffffff" }}>
                 {registeredDate}
               </strong>
             </div>
             <div>
               <span
                 style={{
-                  color: "var(--text-muted)",
+                  color: "#94a3b8",
                   display: "block",
                   fontSize: "0.675rem",
                 }}
@@ -1102,7 +1101,7 @@ export default function CaseDossierView({
           className="section-card"
           style={{
             background: "rgba(14, 20, 34, 0.8)",
-            border: "1px solid var(--border-color)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
             padding: "1rem 1.15rem",
             display: "flex",
             flexDirection: "column",
@@ -1124,13 +1123,13 @@ export default function CaseDossierView({
                 style={{
                   fontSize: "0.925rem",
                   fontWeight: 700,
-                  color: "var(--text-primary)",
+                  color: "#ffffff",
                 }}
               >
                 Statutory Penal Codes & Acts Invoked
               </h3>
               <span
-                style={{ fontSize: "0.725rem", color: "var(--text-muted)" }}
+                style={{ fontSize: "0.725rem", color: "#94a3b8" }}
               >
                 Active legal grounds in {caseNumber}
               </span>
@@ -1147,8 +1146,8 @@ export default function CaseDossierView({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  background: "rgba(255, 255, 255, 0.02)",
-                  border: "1px solid var(--border-subtle)",
+                  background: "rgba(13, 18, 30, 0.9)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
                   borderRadius: "6px",
                   padding: "0.45rem 0.65rem",
                   fontSize: "0.75rem",
@@ -1171,7 +1170,7 @@ export default function CaseDossierView({
                     {sec.code}
                   </span>
                   <span
-                    style={{ color: "var(--text-primary)", fontWeight: 500 }}
+                    style={{ color: "#ffffff", fontWeight: 500 }}
                   >
                     {sec.title}
                   </span>
@@ -1180,8 +1179,8 @@ export default function CaseDossierView({
                   style={{
                     fontSize: "0.65rem",
                     fontWeight: 700,
-                    color: "var(--text-secondary)",
-                    background: "rgba(255, 255, 255, 0.05)",
+                    color: "#cbd5e1",
+                    background: "rgba(20, 28, 48, 0.7)",
                     padding: "0.15rem 0.45rem",
                     borderRadius: "4px",
                   }}
@@ -1199,7 +1198,7 @@ export default function CaseDossierView({
         className="section-card"
         style={{
           background: "rgba(14, 20, 34, 0.8)",
-          border: "1px solid var(--border-color)",
+          border: "1px solid rgba(255, 255, 255, 0.12)",
           padding: "1rem 1.15rem",
         }}
       >
@@ -1226,13 +1225,13 @@ export default function CaseDossierView({
                 style={{
                   fontSize: "0.925rem",
                   fontWeight: 700,
-                  color: "var(--text-primary)",
+                  color: "#ffffff",
                 }}
               >
                 Suspects, Associates & Eyewitnesses Roster ({persons.length})
               </h3>
               <span
-                style={{ fontSize: "0.725rem", color: "var(--text-muted)" }}
+                style={{ fontSize: "0.725rem", color: "#94a3b8" }}
               >
                 Verified identities, aliases, and direct case links
               </span>
@@ -1254,7 +1253,7 @@ export default function CaseDossierView({
             style={{
               padding: "1.5rem",
               textAlign: "center",
-              color: "var(--text-muted)",
+              color: "#94a3b8",
               fontSize: "0.825rem",
               background: "rgba(255, 255, 255, 0.01)",
               borderRadius: "var(--radius-sm)",
@@ -1279,8 +1278,8 @@ export default function CaseDossierView({
                 <div
                   key={p.id}
                   style={{
-                    background: "rgba(255, 255, 255, 0.02)",
-                    border: "1px solid var(--border-color)",
+                    background: "rgba(13, 18, 30, 0.9)",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
                     borderRadius: "var(--radius-sm)",
                     padding: "0.75rem 0.85rem",
                     display: "flex",
@@ -1300,7 +1299,7 @@ export default function CaseDossierView({
                         style={{
                           fontSize: "0.875rem",
                           fontWeight: 700,
-                          color: "var(--text-primary)",
+                          color: "#ffffff",
                         }}
                       >
                         {p.name}
@@ -1308,7 +1307,7 @@ export default function CaseDossierView({
                       <span
                         style={{
                           fontSize: "0.7rem",
-                          color: "var(--text-muted)",
+                          color: "#94a3b8",
                         }}
                       >
                         {p.occupation || "Person of Record"}
@@ -1339,7 +1338,7 @@ export default function CaseDossierView({
                     <div
                       style={{
                         fontSize: "0.725rem",
-                        color: "var(--text-secondary)",
+                        color: "#cbd5e1",
                         display: "flex",
                         alignItems: "center",
                         gap: "0.3rem",
@@ -1347,7 +1346,7 @@ export default function CaseDossierView({
                     >
                       <PhoneCall
                         size={11}
-                        style={{ color: "var(--text-muted)" }}
+                        style={{ color: "#94a3b8" }}
                       />
                       <span>{p.phone_numbers.join(", ")}</span>
                     </div>
@@ -1373,7 +1372,7 @@ export default function CaseDossierView({
                       </span>
                       <span
                         style={{
-                          color: "var(--text-secondary)",
+                          color: "#cbd5e1",
                           fontStyle: "italic",
                         }}
                       >
@@ -1391,11 +1390,11 @@ export default function CaseDossierView({
                       justifyContent: "space-between",
                       marginTop: "0.2rem",
                       paddingTop: "0.35rem",
-                      borderTop: "1px solid var(--border-subtle)",
+                      borderTop: "1px solid rgba(255, 255, 255, 0.1)",
                       fontSize: "0.675rem",
                     }}
                   >
-                    <span style={{ color: "var(--text-muted)" }}>
+                    <span style={{ color: "#94a3b8" }}>
                       {p.source || "Dossier Record"}
                     </span>
                     <span
@@ -1422,7 +1421,7 @@ export default function CaseDossierView({
         className="section-card"
         style={{
           background: "rgba(14, 20, 34, 0.8)",
-          border: "1px solid var(--border-color)",
+          border: "1px solid rgba(255, 255, 255, 0.12)",
           padding: "1rem 1.15rem",
         }}
       >
@@ -1448,12 +1447,12 @@ export default function CaseDossierView({
               style={{
                 fontSize: "0.925rem",
                 fontWeight: 700,
-                color: "var(--text-primary)",
+                color: "#ffffff",
               }}
             >
               Investigation Chronology & Major Breakthroughs
             </h3>
-            <span style={{ fontSize: "0.725rem", color: "var(--text-muted)" }}>
+            <span style={{ fontSize: "0.725rem", color: "#94a3b8" }}>
               Sequential chain of surveillance, seizures, statements, and
               intelligence synthesis
             </span>
@@ -1465,7 +1464,7 @@ export default function CaseDossierView({
             style={{
               padding: "1.25rem",
               textAlign: "center",
-              color: "var(--text-muted)",
+              color: "#94a3b8",
               fontSize: "0.8rem",
               background: "rgba(255, 255, 255, 0.01)",
               borderRadius: "var(--radius-sm)",
@@ -1532,7 +1531,7 @@ export default function CaseDossierView({
                       fontFamily: "var(--font-mono)",
                       fontSize: "0.75rem",
                       fontWeight: 700,
-                      color: "var(--text-primary)",
+                      color: "#ffffff",
                     }}
                   >
                     {item.date} • {item.time}
@@ -1556,7 +1555,7 @@ export default function CaseDossierView({
                   style={{
                     fontSize: "0.85rem",
                     fontWeight: 700,
-                    color: "var(--text-primary)",
+                    color: "#ffffff",
                   }}
                 >
                   {item.title}
@@ -1564,7 +1563,7 @@ export default function CaseDossierView({
                 <p
                   style={{
                     fontSize: "0.75rem",
-                    color: "var(--text-secondary)",
+                    color: "#cbd5e1",
                     lineHeight: 1.35,
                   }}
                 >

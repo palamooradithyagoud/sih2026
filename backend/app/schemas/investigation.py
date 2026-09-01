@@ -316,3 +316,72 @@ class CaseSummary(BaseModel):
     unverified_count: int
     under_review_count: int
     verification_percentage: float
+
+
+# --- Investigation Copilot Schemas (Phase 4) ---
+
+class InvestigationIntentType(str, Enum):
+    FIND_CALL_CONNECTIONS = "find_call_connections"
+    FIND_ASSOCIATES = "find_associates"
+    FIND_PERSON_CONNECTIONS = "find_person_connections"
+    FIND_SHARED_ENTITIES = "find_shared_entities"
+    FIND_VEHICLE_CONNECTIONS = "find_vehicle_connections"
+    FIND_LOCATION_CONNECTIONS = "find_location_connections"
+    FIND_ORGANIZATION_CONNECTIONS = "find_organization_connections"
+    FIND_BANK_TRANSACTION_CONNECTIONS = "find_bank_transaction_connections"
+    FIND_CASE_CONNECTIONS = "find_case_connections"
+    FIND_SHORTEST_VERIFIED_PATH = "find_shortest_verified_path"
+    INVESTIGATION_TIMELINE = "investigation_timeline"
+    ENTITY_SUMMARY = "entity_summary"
+
+
+class InvestigationIntent(BaseModel):
+    intent: InvestigationIntentType = Field(..., description="Approved intent classification")
+    entities: List[str] = Field(default_factory=lambda: ["Person"], description="Target entity types")
+    relationships: List[str] = Field(default_factory=list, description="Target relationship types")
+    filters: Dict[str, Any] = Field(default_factory=dict, description="Filter key-value pairs")
+    person_name: Optional[str] = Field(None, description="Primary person name mentioned")
+    target_person_name: Optional[str] = Field(None, description="Secondary target person name mentioned")
+    entity_name: Optional[str] = Field(None, description="General entity name mentioned")
+    target_entity_name: Optional[str] = Field(None, description="Secondary entity name mentioned")
+    return_fields: List[str] = Field(default_factory=lambda: ["id", "full_name", "name"], description="Fields to return")
+    max_hops: int = Field(1, ge=1, le=3, description="Maximum traversal depth (1-3)")
+    limit: int = Field(50, ge=1, le=50, description="Max record limit (max 50)")
+    verification_status: List[str] = Field(
+        default_factory=lambda: ["VERIFIED", "UNDER_REVIEW"],
+        description="Allowed verification statuses"
+    )
+
+
+class ConnectionPathStep(BaseModel):
+    source_id: str
+    source_name: str
+    source_type: str
+    relationship_type: str
+    target_id: str
+    target_name: str
+    target_type: str
+    verification_status: str = "VERIFIED"
+
+
+class CopilotQueryRequest(BaseModel):
+    case_id: str = Field(..., example="case_hyd_001")
+    question: str = Field(..., example="Who is connected to Raj Kumar through phone calls?")
+    officer_id: Optional[str] = Field("Officer ID 1024 (Insp. Adithya)", description="Investigating officer identifier")
+
+
+class CopilotQueryResponse(BaseModel):
+    case_id: str
+    question: str
+    answer: str
+    query_type: str
+    confidence: str = Field("high", description="high, medium, or low based on graph evidence quality")
+    results: List[Dict[str, Any]] = Field(default_factory=list)
+    cypher: str
+    sources: List[Dict[str, Any]] = Field(default_factory=list)
+    entities_found: List[str] = Field(default_factory=list)
+    relationships_traversed: List[str] = Field(default_factory=list)
+    connection_path: List[ConnectionPathStep] = Field(default_factory=list)
+    ambiguity_notice: Optional[str] = None
+    graph_data: Optional[GraphData] = None
+

@@ -29,15 +29,8 @@ export default function CaseHeader({
 
       <div className="case-actions-group">
         {onOpenAiPdfExtractor && (
-          <button
-            onClick={onOpenAiPdfExtractor}
-            className="btn-primary"
-            style={{
-              background: "linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(168, 85, 247, 0.2))",
-              borderColor: "rgba(6, 182, 212, 0.45)",
-            }}
-          >
-            <FileText size={16} style={{ color: "var(--accent-cyan)" }} />
+          <button onClick={onOpenAiPdfExtractor} className="btn-primary">
+            <FileText size={16} />
             <span>Upload PDF (Groq AI)</span>
           </button>
         )}

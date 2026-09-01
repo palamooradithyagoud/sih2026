@@ -36,6 +36,7 @@ import NetworkGraphPreview from "@/components/NetworkGraphPreview";
 import EntityExplorer from "@/components/EntityExplorer";
 import CaseDossierView from "@/components/CaseDossierView";
 import DocGraphExtractor from "@/components/DocGraphExtractor";
+import InvestigationCopilot from "@/components/InvestigationCopilot";
 import { investigationApi } from "@/lib/investigationApi";
 import {
   Case,
@@ -161,14 +162,14 @@ export default function Home() {
   };
 
   const quickEntryCards = [
-    { id: "person", label: "Person", desc: "Suspects, witnesses, aliases", icon: User, count: persons.length, color: "var(--accent-cyan)" },
-    { id: "call", label: "Phone / Call", desc: "CDR logs, duration, cell towers", icon: PhoneCall, count: calls.length, color: "var(--accent-blue)" },
-    { id: "transaction", label: "Transaction", desc: "Bank routing, UPI, Hawala", icon: DollarSign, count: transactions.length, color: "var(--accent-amber)" },
+    { id: "person", label: "Person", desc: "Suspects, witnesses, aliases", icon: User, count: persons.length, color: "#3b82f6" },
+    { id: "call", label: "Phone / Call", desc: "CDR logs, duration, cell towers", icon: PhoneCall, count: calls.length, color: "#00f2fe" },
+    { id: "transaction", label: "Transaction", desc: "Bank routing, UPI, Hawala", icon: DollarSign, count: transactions.length, color: "#fbbf24" },
     { id: "location", label: "Location", desc: "Coordinates, visits, CCTV spots", icon: MapPin, count: locations.length, color: "#f97316" },
-    { id: "vehicle", label: "Vehicle", desc: "License plates, models, owners", icon: Car, count: vehicles.length, color: "var(--accent-emerald)" },
+    { id: "vehicle", label: "Vehicle", desc: "License plates, models, owners", icon: Car, count: vehicles.length, color: "#10b981" },
     { id: "relationship", label: "Relationship", desc: "Family, associates, co-accused", icon: Users, count: relationships.length, color: "#ec4899" },
-    { id: "organization", label: "Organization", desc: "Shell companies, GST, fronts", icon: Building2, count: organizations.length, color: "var(--accent-purple)" },
-    { id: "evidence", label: "Evidence", desc: "FIR, docs, forensic dumps", icon: FileText, count: evidence.length, color: "#e2e8f0" },
+    { id: "organization", label: "Organization", desc: "Shell companies, GST, fronts", icon: Building2, count: organizations.length, color: "var(--color-crayola)" },
+    { id: "evidence", label: "Evidence", desc: "FIR, docs, forensic dumps", icon: FileText, count: evidence.length, color: "var(--color-light-blue)" },
   ];
 
   return (
@@ -224,62 +225,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* AI Ingestion Hero Prompt on Dashboard */}
-        {activeNavTab === "dashboard" && (
-          <div
-            className="section-card"
-            style={{
-              padding: "1rem 1.25rem",
-              background: "linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(168, 85, 247, 0.05))",
-              border: "1px solid rgba(6, 182, 212, 0.25)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "1rem",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
-              <div
-                style={{
-                  width: "38px",
-                  height: "38px",
-                  borderRadius: "8px",
-                  background: "rgba(6, 182, 212, 0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "var(--accent-cyan)",
-                }}
-              >
-                <Zap size={20} />
-              </div>
-              <div>
-                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                  Groq AI Document Ingestion & Graph Synthesis
-                </div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                  Instantly ingest FIRs, Interrogations, or Bank statements using Llama-3.3-70B to auto-generate the Knowledge Graph.
-                </div>
-              </div>
-            </div>
 
-            <button
-              onClick={() => setActiveNavTab("ai-extractor")}
-              className="btn-primary"
-              style={{
-                padding: "0.45rem 1rem",
-                fontSize: "0.8rem",
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: "0.4rem",
-              }}
-            >
-              <Sparkles size={14} /> Open AI Ingestion Studio
-            </button>
-          </div>
-        )}
 
         {/* AI Extractor Tab View */}
         {activeNavTab === "ai-extractor" && (
@@ -461,6 +407,19 @@ export default function Home() {
           </section>
         )}
 
+        {/* 7. INVESTIGATION COPILOT TAB (Phase 4) */}
+        {activeNavTab === "copilot" && (
+          <section>
+            <InvestigationCopilot
+              caseId={activeCaseId}
+              onHighlightGraph={(highlightData) => {
+                setGraphData(highlightData);
+              }}
+              onNavigateToGraph={() => setActiveNavTab("network")}
+            />
+          </section>
+        )}
+
         {/* 4. EVIDENCE VAULT TAB */}
         {activeNavTab === "evidence" && (
           <section>
@@ -518,21 +477,25 @@ export default function Home() {
                     <div
                       key={p.id}
                       style={{
-                        padding: "0.75rem 1rem",
-                        background: "rgba(255, 255, 255, 0.02)",
+                        padding: "0.85rem 1.1rem",
+                        background: "rgba(20, 28, 48, 0.75)",
                         border: "1px solid var(--border-color)",
                         borderRadius: "var(--radius-sm)",
                         display: "flex",
                         justifyContent: "space-between",
-                        fontSize: "0.8rem",
+                        alignItems: "center",
+                        fontSize: "0.825rem",
+                        color: "#ffffff",
                       }}
                     >
-                      <span>
-                        {p.verification_status === "VERIFIED" ? "✓" : "⏳"}{" "}
-                        <strong>{p.name}</strong> ({p.status}) tagged as {p.verification_status}
+                      <span style={{ color: "#ffffff" }}>
+                        <span style={{ color: p.verification_status === "VERIFIED" ? "var(--accent-emerald)" : "var(--accent-amber)", fontWeight: 700, marginRight: "0.5rem" }}>
+                          {p.verification_status === "VERIFIED" ? "✓ VERIFIED" : "⏳ UNVERIFIED"}
+                        </span>
+                        <strong style={{ color: "#ffffff" }}>{p.name}</strong> ({p.status})
                       </span>
-                      <span style={{ color: "var(--text-muted)" }}>
-                        {p.added_by_officer || "Officer"} • Conf: {Math.round(p.confidence_score * 100)}%
+                      <span style={{ color: "#94a3b8", fontSize: "0.775rem", fontFamily: "var(--font-mono)" }}>
+                        {p.added_by_officer || "Officer ID 1024"} • Conf: {Math.round(p.confidence_score * 100)}%
                       </span>
                     </div>
                   ))}
@@ -540,21 +503,25 @@ export default function Home() {
                     <div
                       key={t.id}
                       style={{
-                        padding: "0.75rem 1rem",
-                        background: "rgba(255, 255, 255, 0.02)",
+                        padding: "0.85rem 1.1rem",
+                        background: "rgba(20, 28, 48, 0.75)",
                         border: "1px solid var(--border-color)",
                         borderRadius: "var(--radius-sm)",
                         display: "flex",
                         justifyContent: "space-between",
-                        fontSize: "0.8rem",
+                        alignItems: "center",
+                        fontSize: "0.825rem",
+                        color: "#ffffff",
                       }}
                     >
-                      <span>
-                        {t.verification_status === "VERIFIED" ? "✓" : "⏳"}{" "}
-                        <strong>₹{t.amount.toLocaleString("en-IN")} Transfer</strong> ({t.sender_name} → {t.receiver_name})
+                      <span style={{ color: "#ffffff" }}>
+                        <span style={{ color: t.verification_status === "VERIFIED" ? "var(--accent-emerald)" : "var(--accent-amber)", fontWeight: 700, marginRight: "0.5rem" }}>
+                          {t.verification_status === "VERIFIED" ? "✓ VERIFIED" : "⏳ UNVERIFIED"}
+                        </span>
+                        <strong style={{ color: "var(--color-crayola)" }}>₹{t.amount.toLocaleString("en-IN")} Transfer</strong> ({t.sender_name} → {t.receiver_name})
                       </span>
-                      <span style={{ color: "var(--text-muted)" }}>
-                        {t.added_by_officer || "FIU Report"} • Conf: {Math.round(t.confidence_score * 100)}%
+                      <span style={{ color: "#94a3b8", fontSize: "0.775rem", fontFamily: "var(--font-mono)" }}>
+                        {t.added_by_officer || "FIU Officer ID 1024"} • Conf: {Math.round(t.confidence_score * 100)}%
                       </span>
                     </div>
                   ))}

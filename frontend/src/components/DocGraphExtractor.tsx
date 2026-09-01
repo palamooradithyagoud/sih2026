@@ -460,7 +460,7 @@ export default function DocGraphExtractor({
         {/* Left Column: Document Ingestion Source Tabs */}
         <div className="section-card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {/* Tabs Selector */}
-          <div style={{ display: "flex", background: "rgba(0, 0, 0, 0.25)", padding: "0.25rem", borderRadius: "var(--radius-sm)", gap: "0.25rem" }}>
+          <div style={{ display: "flex", background: "rgba(7, 10, 18, 0.8)", padding: "0.25rem", borderRadius: "var(--radius-sm)", gap: "0.25rem", border: "1px solid rgba(255, 255, 255, 0.12)" }}>
             <button
               onClick={() => setInputMode("upload")}
               style={{
@@ -475,9 +475,9 @@ export default function DocGraphExtractor({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "0.4rem",
-                background: inputMode === "upload" ? "var(--bg-card)" : "transparent",
-                color: inputMode === "upload" ? "var(--accent-cyan)" : "var(--text-muted)",
-                boxShadow: inputMode === "upload" ? "0 2px 4px rgba(0,0,0,0.3)" : "none",
+                background: inputMode === "upload" ? "#ffffff" : "transparent",
+                color: inputMode === "upload" ? "#0f172a" : "#64748b",
+                boxShadow: inputMode === "upload" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
               }}
             >
               <UploadCloud size={14} /> Upload File
@@ -497,9 +497,9 @@ export default function DocGraphExtractor({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "0.4rem",
-                background: inputMode === "text" ? "var(--bg-card)" : "transparent",
-                color: inputMode === "text" ? "var(--accent-cyan)" : "var(--text-muted)",
-                boxShadow: inputMode === "text" ? "0 2px 4px rgba(0,0,0,0.3)" : "none",
+                background: inputMode === "text" ? "#ffffff" : "transparent",
+                color: inputMode === "text" ? "#0f172a" : "#64748b",
+                boxShadow: inputMode === "text" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
               }}
             >
               <FileCode size={14} /> Raw FIR Text
@@ -514,8 +514,8 @@ export default function DocGraphExtractor({
               justifyContent: "space-between",
               padding: "0.55rem 0.85rem",
               borderRadius: "var(--radius-sm)",
-              background: "rgba(255, 255, 255, 0.02)",
-              border: "1px solid var(--border-color)",
+              background: "rgba(20, 28, 48, 0.7)",
+              border: "1px solid rgba(255, 255, 255, 0.12)",
               gap: "0.75rem",
               flexWrap: "wrap",
             }}
@@ -532,9 +532,9 @@ export default function DocGraphExtractor({
                 style={{
                   padding: "0.25rem 0.65rem",
                   borderRadius: "4px",
-                  border: targetScope === "new" ? "1px solid var(--accent-cyan)" : "1px solid transparent",
-                  background: targetScope === "new" ? "rgba(6, 182, 212, 0.15)" : "transparent",
-                  color: targetScope === "new" ? "var(--accent-cyan)" : "var(--text-muted)",
+                  border: targetScope === "new" ? "1px solid #c084fc" : "1px solid transparent",
+                  background: targetScope === "new" ? "#f3e8ff" : "transparent",
+                  color: targetScope === "new" ? "#9333ea" : "#64748b",
                   fontSize: "0.72rem",
                   cursor: "pointer",
                   fontWeight: 600,
@@ -552,9 +552,9 @@ export default function DocGraphExtractor({
                   style={{
                     padding: "0.25rem 0.65rem",
                     borderRadius: "4px",
-                    border: targetScope === "existing" ? "1px solid var(--accent-cyan)" : "1px solid transparent",
-                    background: targetScope === "existing" ? "rgba(6, 182, 212, 0.15)" : "transparent",
-                    color: targetScope === "existing" ? "var(--accent-cyan)" : "var(--text-muted)",
+                    border: targetScope === "existing" ? "1px solid #c084fc" : "1px solid transparent",
+                    background: targetScope === "existing" ? "#f3e8ff" : "transparent",
+                    color: targetScope === "existing" ? "#9333ea" : "#64748b",
                     fontSize: "0.72rem",
                     cursor: "pointer",
                     fontWeight: 600,
@@ -578,11 +578,11 @@ export default function DocGraphExtractor({
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  border: dragActive ? "2px dashed var(--accent-cyan)" : "2px dashed var(--border-color)",
+                  border: dragActive ? "2px dashed #00f2fe" : "2px dashed rgba(255, 255, 255, 0.2)",
                   borderRadius: "var(--radius-sm)",
                   padding: "2rem 1.5rem",
                   textAlign: "center",
-                  background: dragActive ? "rgba(6, 182, 212, 0.05)" : "rgba(0, 0, 0, 0.2)",
+                  background: dragActive ? "rgba(0, 242, 254, 0.12)" : "rgba(20, 28, 48, 0.7)",
                   cursor: "pointer",
                   transition: "all 0.15s ease",
                   display: "flex",
