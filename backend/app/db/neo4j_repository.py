@@ -61,12 +61,37 @@ ALLOWED_RELATIONSHIP_TYPES: Set[str] = {
     "PARTICIPATED_IN",
     "USED",
     "LOCATED_AT",
-    # Structural & membership relationships
     "DIRECTOR",
+    "DIRECTOR_OF",
     "PART_OF",
     "BELONGS_TO",
     "APPEARS_IN",
+    "INVESTIGATED_BY",
+    "TRIED_AT",
+    "CHARGED_IN",
+    "ACCUSED_IN",
+    "FATHER_OF",
+    "SPOUSE_OF",
+    "CO_CONSPIRATOR",
+    "CO_ACCUSED",
+    "ACCOMPLICE",
+    "HANDLED_BY",
+    "PETITIONER_IN",
+    "SUBMITTED_TO",
+    "ORDERED",
+    "EVIDENCE_FOR",
+    "FILED_IN",
+    "REPORTED_AT",
+    "DETAINED_AT",
+    "ARRESTED_BY",
+    "OWNS_PHONE",
+    "OWNS_VEHICLE",
+    "SAW_SUSPECT",
+    "MEMBER_OF",
+    "CONNECTED_TO",
+    "CONNECTED",
 }
+
 
 # Strict whitelist of allowed node labels
 ALLOWED_NODE_LABELS: Set[str] = {
@@ -228,13 +253,12 @@ class Neo4jRepository:
         return label
 
     def _validate_relationship_type(self, rel_type: str) -> str:
-        """Validates that a relationship type is in the authorized whitelist."""
-        rel_type_upper = rel_type.strip().upper()
+        """Validates relationship type, fallback to ASSOCIATED_WITH if custom."""
+        rel_type_upper = rel_type.strip().upper().replace(" ", "_")
         if rel_type_upper not in ALLOWED_RELATIONSHIP_TYPES:
-            raise InvalidRelationshipTypeError(
-                f"Unauthorized relationship type: '{rel_type}'. Must be one of {sorted(ALLOWED_RELATIONSHIP_TYPES)}"
-            )
+            return "ASSOCIATED_WITH"
         return rel_type_upper
+
 
     def _validate_verification_status(self, status: str) -> str:
         """Normalizes and validates verification status."""

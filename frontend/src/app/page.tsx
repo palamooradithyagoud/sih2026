@@ -145,6 +145,7 @@ export default function Home() {
     loadCaseData();
   }, [loadCaseData]);
 
+
   const handleOpenDataEntryWithTab = (tab: EntityTypeTab) => {
     setDataEntryInitialTab(tab);
     setIsDataEntryOpen(true);

@@ -514,13 +514,19 @@ class LocalGraphStore:
         for nid in member_ids:
             if nid in self.nodes:
                 n = self.nodes[nid]
+                d_name = n.get("display_name")
+                if not d_name or d_name == n["id"]:
+                    props = n.get("properties", {})
+                    d_name = props.get("name") or props.get("full_name") or props.get("title") or props.get("account_number") or n["id"]
+
                 nodes_list.append({
                     "id": n["id"],
                     "label": n.get("label", "Entity"),
-                    "display_name": n.get("display_name", n["id"]),
+                    "display_name": d_name,
                     "properties": n.get("properties", {}),
                     "verification_status": n.get("verification_status", "VERIFIED"),
                 })
+
 
         rels_list = []
         for rid, rel in self.relationships.items():
