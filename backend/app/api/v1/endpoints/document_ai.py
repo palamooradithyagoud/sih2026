@@ -101,6 +101,8 @@ async def upload_and_extract_document(
             detail="Could not extract readable text from document. Ensure file is not empty.",
         )
 
+    clean_case_id = case_id.strip() if case_id and case_id.strip() and case_id.strip() != "undefined" else None
+
     # 1. Run Groq NER & Knowledge Graph Synthesis
     extraction = groq_extractor.extract_document_intelligence(
         document_text=doc_text,
@@ -110,7 +112,7 @@ async def upload_and_extract_document(
 
     # 2. Ingest into InvestigationService (Neo4j + PostgreSQL)
     return investigation_service.ingest_extracted_document(
-        case_id=case_id,
+        case_id=clean_case_id,
         extraction_data=extraction,
         document_name=actual_filename,
         document_type=document_type,
@@ -121,6 +123,8 @@ async def upload_and_extract_document(
 @router.post("/documents/extract-text", summary="Extract entities and synthesize Knowledge Graph from raw text")
 def extract_from_text(payload: DocumentTextExtractRequest):
     """Extracts entities and Knowledge Graph topology from raw document text string."""
+    clean_case_id = payload.case_id.strip() if payload.case_id and payload.case_id.strip() and payload.case_id.strip() != "undefined" else None
+
     extraction = groq_extractor.extract_document_intelligence(
         document_text=payload.document_text,
         document_name=payload.document_name,
@@ -128,7 +132,7 @@ def extract_from_text(payload: DocumentTextExtractRequest):
     )
 
     return investigation_service.ingest_extracted_document(
-        case_id=payload.case_id,
+        case_id=clean_case_id,
         extraction_data=extraction,
         document_name=payload.document_name,
         document_type=payload.document_type,
@@ -146,6 +150,8 @@ def extract_sample_document(
     if sample_id not in SAMPLE_INVESTIGATION_DOCUMENTS:
         raise HTTPException(status_code=404, detail="Sample document not found")
 
+    clean_case_id = case_id.strip() if case_id and case_id.strip() and case_id.strip() != "undefined" else None
+
     sample = SAMPLE_INVESTIGATION_DOCUMENTS[sample_id]
     extraction = groq_extractor.extract_document_intelligence(
         document_text=sample["text"],
@@ -154,7 +160,7 @@ def extract_sample_document(
     )
 
     return investigation_service.ingest_extracted_document(
-        case_id=case_id,
+        case_id=clean_case_id,
         extraction_data=extraction,
         document_name=f"{sample['title']}.pdf",
         document_type=sample["category"],

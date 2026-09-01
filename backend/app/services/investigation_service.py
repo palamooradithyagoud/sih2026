@@ -1630,6 +1630,13 @@ class InvestigationService:
         # 2. Ingest Persons (Candidate status: UNDER_REVIEW)
         for p in extraction_data.get("persons", []):
             try:
+                p_name = str(p.get("name") or "").strip()
+                if not p_name or p_name.lower() in [
+                    "unknown", "unknown person", "full name", "full name as stated in document",
+                    "suspect", "person a", "person b", "none", "null"
+                ]:
+                    continue
+
                 role_val = PersonStatus.SUSPECT
                 if p.get("status") in [s.value for s in PersonStatus]:
                     role_val = PersonStatus(p.get("status"))
@@ -1637,15 +1644,15 @@ class InvestigationService:
                 self.add_person(
                     case_id=target_case_id,
                     person_in=PersonCreate(
-                        name=p.get("name", "Unknown Person"),
+                        name=p_name,
                         dob=p.get("dob"),
-                        gender=p.get("gender", "Male"),
+                        gender=p.get("gender") if p.get("gender") in ["Male", "Female", "Other"] else "Male",
                         address=p.get("address"),
-                        phone_numbers=p.get("phone_numbers", []),
+                        phone_numbers=[ph for ph in p.get("phone_numbers", []) if ph and ph not in ["0000000000", "10-digit phone number"]],
                         known_aliases=p.get("known_aliases", []),
                         occupation=p.get("occupation"),
                         status=role_val,
-                        source=f"Groq AI Ingestion ({document_name})",
+                        source=f"Document Ingestion ({document_name})",
                         added_by_officer="AI Extractor / Insp. Adithya",
                         verification_status=VerificationStatus.UNDER_REVIEW,
                         confidence_score=float(p.get("confidence_score", 0.85)),
@@ -1659,19 +1666,25 @@ class InvestigationService:
         # 3. Ingest Calls (Candidate status: UNDER_REVIEW)
         for c in extraction_data.get("calls", []):
             try:
+                c_caller = str(c.get("caller_number") or "").strip()
+                c_receiver = str(c.get("receiver_number") or "").strip()
+                dummy_numbers = ["0000000000", "null", "none", "10-digit phone number", "phone number", ""]
+                if c_caller.lower() in dummy_numbers or c_receiver.lower() in dummy_numbers:
+                    continue
+
                 self.add_call(
                     case_id=target_case_id,
                     call_in=CallRecordCreate(
-                        caller_number=str(c.get("caller_number") or "0000000000"),
+                        caller_number=c_caller,
                         caller_name=c.get("caller_name"),
-                        receiver_number=str(c.get("receiver_number") or "0000000000"),
+                        receiver_number=c_receiver,
                         receiver_name=c.get("receiver_name"),
                         date=str(c.get("date") or datetime.now().strftime("%Y-%m-%d")),
                         time=str(c.get("time") or "12:00:00"),
                         duration_seconds=int(c.get("duration_seconds") or 60),
                         call_type=str(c.get("call_type") or "Incoming"),
-                        cell_tower_id=c.get("cell_tower_id") or "HYD-TWR-DEFAULT",
-                        source=f"Groq AI Ingestion ({document_name})",
+                        cell_tower_id=c.get("cell_tower_id") or "CELL-TWR-DOC",
+                        source=f"Document Ingestion ({document_name})",
                         added_by_officer="AI Extractor / Insp. Adithya",
                         verification_status=VerificationStatus.UNDER_REVIEW,
                         confidence_score=0.85,
@@ -1685,21 +1698,32 @@ class InvestigationService:
         # 4. Ingest Transactions (Candidate status: UNDER_REVIEW)
         for t in extraction_data.get("transactions", []):
             try:
+                amt = float(t.get("amount") or 0)
+                s_name = str(t.get("sender_name") or "").strip()
+                r_name = str(t.get("receiver_name") or "").strip()
+                dummy_entities = [
+                    "sender", "sender person / entity", "sender entity", "sender name from text",
+                    "receiver", "receiver person / entity", "receiver entity", "receiver name from text",
+                    "none", "null", ""
+                ]
+                if amt <= 0 or s_name.lower() in dummy_entities or r_name.lower() in dummy_entities:
+                    continue
+
                 self.add_transaction(
                     case_id=target_case_id,
                     txn_in=TransactionCreate(
-                        sender_name=str(t.get("sender_name") or "Sender"),
-                        sender_account=t.get("sender_account") or "ACC-01",
-                        receiver_name=str(t.get("receiver_name") or "Receiver"),
-                        receiver_account=t.get("receiver_account") or "ACC-02",
-                        amount=float(t.get("amount") or 10000.0),
+                        sender_name=s_name,
+                        sender_account=t.get("sender_account") or "ACC-REF",
+                        receiver_name=r_name,
+                        receiver_account=t.get("receiver_account") or "ACC-REF",
+                        amount=amt,
                         currency=str(t.get("currency") or "INR"),
                         date=str(t.get("date") or datetime.now().strftime("%Y-%m-%d")),
                         time=str(t.get("time") or "12:00:00"),
                         transaction_id=str(t.get("transaction_id") or f"TXN{uuid.uuid4().hex[:6].upper()}"),
-                        bank_name=str(t.get("bank_name") or "Nationalized Bank"),
-                        payment_type=str(t.get("payment_type") or "Bank Transfer"),
-                        source=f"Groq AI Ingestion ({document_name})",
+                        bank_name=str(t.get("bank_name") or "Bank Specified in Record"),
+                        payment_type=str(t.get("payment_type") or "Financial Transfer"),
+                        source=f"Document Ingestion ({document_name})",
                         added_by_officer="AI Extractor / Insp. Adithya",
                         verification_status=VerificationStatus.UNDER_REVIEW,
                         confidence_score=0.88,
@@ -1713,17 +1737,25 @@ class InvestigationService:
         # 5. Ingest Locations (Candidate status: UNDER_REVIEW)
         for loc in extraction_data.get("locations", []):
             try:
+                loc_name = str(loc.get("name") or "").strip()
+                dummy_locs = [
+                    "scene of crime", "location name", "safehouse / meeting spot / hideout",
+                    "location name mentioned in text", "none", "null", ""
+                ]
+                if loc_name.lower() in dummy_locs:
+                    continue
+
                 self.add_location(
                     case_id=target_case_id,
                     loc_in=LocationCreate(
-                        name=str(loc.get("name") or "Scene of Crime"),
-                        address=str(loc.get("address") or "Hyderabad, Telangana"),
+                        name=loc_name,
+                        address=str(loc.get("address") or loc_name),
                         latitude=float(loc.get("latitude") if loc.get("latitude") is not None else 17.4156),
                         longitude=float(loc.get("longitude") if loc.get("longitude") is not None else 78.4750),
                         date=str(loc.get("date") or datetime.now().strftime("%Y-%m-%d")),
                         time=str(loc.get("time") or "12:00:00"),
                         associated_persons=loc.get("associated_persons") or [],
-                        source=f"Groq AI Ingestion ({document_name})",
+                        source=f"Document Ingestion ({document_name})",
                         added_by_officer="AI Extractor / Insp. Adithya",
                         verification_status=VerificationStatus.UNDER_REVIEW,
                         confidence_score=0.85,
@@ -1737,16 +1769,21 @@ class InvestigationService:
         # 6. Ingest Vehicles (Candidate status: UNDER_REVIEW)
         for v in extraction_data.get("vehicles", []):
             try:
+                reg_num = str(v.get("registration_number") or "").strip()
+                dummy_plates = ["ts09ab0000", "plate number", "ts09ab1234", "plate number mentioned in text", "none", "null", ""]
+                if reg_num.lower() in dummy_plates:
+                    continue
+
                 self.add_vehicle(
                     case_id=target_case_id,
                     veh_in=VehicleCreate(
-                        registration_number=v.get("registration_number", "TS09AB0000"),
+                        registration_number=reg_num,
                         vehicle_type=v.get("vehicle_type", "Car"),
                         make_model=v.get("make_model", "Automobile"),
-                        color=v.get("color", "Unknown"),
+                        color=v.get("color", "Standard"),
                         owner_name=v.get("owner_name", "Unknown"),
                         associated_persons=v.get("associated_persons") or [],
-                        source=f"Groq AI Ingestion ({document_name})",
+                        source=f"Document Ingestion ({document_name})",
                         added_by_officer="AI Extractor / Insp. Adithya",
                         verification_status=VerificationStatus.UNDER_REVIEW,
                         confidence_score=0.85,
@@ -1760,50 +1797,59 @@ class InvestigationService:
         # 7. Ingest Organizations (Candidate status: UNDER_REVIEW)
         for org in extraction_data.get("organizations", []):
             try:
+                org_name = str(org.get("name") or "").strip()
+                dummy_orgs = ["unknown entity", "organization", "organization / shell company / gang name", "organization / company name from text", "none", "null", ""]
+                if org_name.lower() in dummy_orgs:
+                    continue
+
                 self.add_organization(
                     case_id=target_case_id,
                     org_in=OrganizationCreate(
-                        name=org.get("name", "Unknown Entity"),
+                        name=org_name,
                         org_type=org.get("org_type", "Commercial Entity"),
                         registration_number=org.get("registration_number"),
                         address=org.get("address"),
                         key_persons=org.get("key_persons") or [],
-                        source=f"Groq AI Ingestion ({document_name})",
+                        source=f"Document Ingestion ({document_name})",
                         added_by_officer="AI Extractor / Insp. Adithya",
                         verification_status=VerificationStatus.UNDER_REVIEW,
                         confidence_score=0.85,
-                        notes="Extracted organizational entity",
+                        notes="Identified syndicate or corporate shell",
                     ),
                 )
                 added_counts["organizations"] += 1
             except Exception as e:
                 logger.warning(f"Error adding extracted organization: {e}")
 
-        # 8. Ingest Document as Evidence Node
+        # 8. Ingest Document as Primary Evidence Item
         try:
             self.add_evidence(
                 case_id=target_case_id,
-                ev_in=EvidenceCreate(
-                    title=f"Extracted Document: {document_name}",
+                evidence_in=EvidenceCreate(
+                    title=f"{document_type.upper()} Ingestion: {document_name}",
                     file_name=document_name,
                     evidence_type=document_type,
-                    description=extraction_data.get("extracted_summary", "Document analyzed via Groq AI NER."),
+                    description=f"Raw text ({len(raw_text)} chars) parsed via Groq LLM Knowledge Graph synthesis.",
                     date_obtained=datetime.now().strftime("%Y-%m-%d"),
-                    custody_officer="AI Extractor / Insp. Adithya",
-                    source="Digital Forensic AI Ingestion",
-                    verification_status=VerificationStatus.UNDER_REVIEW,
+                    custody_officer="Insp. Adithya (Cyber Crime PS)",
+                    source="AI Document Engine",
+                    added_by_officer="Insp. Adithya",
+                    verification_status=VerificationStatus.VERIFIED,
+                    confidence_score=1.0,
+                    notes=case_meta.get("summary", ""),
                 ),
             )
             added_counts["evidence"] += 1
         except Exception as e:
-            logger.warning(f"Error creating Document evidence item: {e}")
+            logger.warning(f"Error adding extracted evidence item: {e}")
 
         # 9. Ingest Extracted Explicit Relationships
         for rel in extraction_data.get("relationships", []):
-            src_name = rel.get("source_name") or rel.get("from_name") or rel.get("source") or rel.get("from")
-            dst_name = rel.get("target_name") or rel.get("to_name") or rel.get("target") or rel.get("to")
-            rel_type = rel.get("type") or rel.get("relation_type") or rel.get("relationship_type") or "ASSOCIATE_OF"
-            if src_name and dst_name and str(src_name).strip() and str(dst_name).strip():
+            src_name = rel.get("person_a") or rel.get("source_name") or rel.get("from_name") or rel.get("source")
+            dst_name = rel.get("person_b") or rel.get("target_name") or rel.get("to_name") or rel.get("target")
+            rel_type = rel.get("type") or rel.get("relation_type") or rel.get("relationship_type") or "ASSOCIATE"
+            dummy_names = ["person a", "person a name", "person a name from text", "person b", "person b name", "person b name from text", "none", "null", ""]
+            if src_name and dst_name and str(src_name).strip().lower() not in dummy_names and str(dst_name).strip().lower() not in dummy_names:
                 try:
                     src_pid = self._find_or_create_person_for_case(target_case_id, str(src_name).strip())
                     dst_pid = self._find_or_create_person_for_case(target_case_id, str(dst_name).strip())
@@ -1815,7 +1861,7 @@ class InvestigationService:
                             target_entity_type="PERSON",
                             target_entity_id=dst_pid,
                             relationship_type=str(rel_type).upper(),
-                            source=f"Groq AI Ingestion ({document_name})",
+                            source=f"Document Ingestion ({document_name})",
                             added_by_officer="AI Extractor / Insp. Adithya",
                             verification_status=VerificationStatus.UNDER_REVIEW,
                             confidence_score=0.85,

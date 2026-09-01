@@ -184,7 +184,11 @@ export interface CaseSummary {
   case_id: string;
   case_number: string;
   title: string;
+  description?: string;
   lead_officer: string;
+  station?: string;
+  priority?: string;
+  created_at?: string;
   total_persons: number;
   total_calls: number;
   total_transactions: number;

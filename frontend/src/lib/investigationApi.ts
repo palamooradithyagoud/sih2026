@@ -20,18 +20,30 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const PREFIX = `${API_BASE}/api/v1/investigation`;
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
-    },
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options?.headers || {}),
+      },
+      cache: "no-store",
+    });
+  } catch (netErr: any) {
+    throw new Error(
+      `Failed to connect to FastAPI backend at ${API_BASE}. Please ensure the backend server is running (e.g. 'uvicorn app.main:app --reload --port 8000'). Original error: ${netErr?.message || netErr}`
+    );
+  }
 
   if (!res.ok) {
     const errorBody = await res.text();
-    throw new Error(`API Error [${res.status}]: ${errorBody || res.statusText}`);
+    let detailMsg = errorBody;
+    try {
+      const parsed = JSON.parse(errorBody);
+      if (parsed.detail) detailMsg = parsed.detail;
+    } catch {}
+    throw new Error(`API Error [${res.status}]: ${detailMsg || res.statusText}`);
   }
 
   return res.json();
@@ -145,14 +157,27 @@ export const investigationApi = {
     request<SampleDocumentMeta[]>(`${PREFIX}/documents/samples`),
 
   uploadAndExtractDocument: async (formData: FormData): Promise<DocumentExtractionResult> => {
-    const res = await fetch(`${PREFIX}/documents/upload-and-extract`, {
-      method: "POST",
-      body: formData,
-      cache: "no-store",
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${PREFIX}/documents/upload-and-extract`, {
+        method: "POST",
+        body: formData,
+        cache: "no-store",
+      });
+    } catch (netErr: any) {
+      throw new Error(
+        `Failed to connect to FastAPI backend at ${API_BASE}. Please ensure the backend server is running (e.g. 'uvicorn app.main:app --reload --port 8000'). Original error: ${netErr?.message || netErr}`
+      );
+    }
+
     if (!res.ok) {
       const errorBody = await res.text();
-      throw new Error(`Extraction Error [${res.status}]: ${errorBody || res.statusText}`);
+      let detailMsg = errorBody;
+      try {
+        const parsed = JSON.parse(errorBody);
+        if (parsed.detail) detailMsg = parsed.detail;
+      } catch {}
+      throw new Error(`Extraction Error [${res.status}]: ${detailMsg || res.statusText}`);
     }
     return res.json();
   },

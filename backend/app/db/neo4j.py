@@ -20,6 +20,7 @@ def get_neo4j_driver() -> Optional[Driver]:
                 uri,
                 auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD),
                 max_connection_lifetime=300,
+                connection_timeout=2.0,
             )
         except Exception as e:
             logger.warning(f"Failed to initialize Neo4j driver with {uri}: {e}")
@@ -27,6 +28,7 @@ def get_neo4j_driver() -> Optional[Driver]:
                 _neo4j_driver = GraphDatabase.driver(
                     settings.NEO4J_URI,
                     auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD),
+                    connection_timeout=2.0,
                 )
             except Exception as ex:
                 logger.warning(f"Alternative driver initialization failed: {ex}")

@@ -11,39 +11,57 @@ logger = logging.getLogger(__name__)
 
 # System prompt specialized for Police & Criminal Intelligence Document Analysis
 INVESTIGATION_EXTRACTION_PROMPT = """You are an elite Law Enforcement Intelligence & Knowledge Graph Analyst AI.
-Your task is to analyze criminal investigation documents (such as FIRs, Charge Sheets, Witness Statements, Interrogation Reports, CDR Logs, Bank Statements) and extract structured investigative entities, timelines, and connected Knowledge Graph topologies.
+Your task is to analyze ONLY the specific criminal investigation document provided in the user prompt (such as an FIR, Charge Sheet, Witness Statement, Interrogation Report, CDR Log, or Bank Statement).
+Extract structured investigative entities, timelines, and connected Knowledge Graph topologies based EXCLUSIVELY on the provided text.
+
+### STRICT RULES FOR ZERO-HALLUCINATION & DOCUMENT ISOLATION:
+1. ONLY EXTRACT FACTS DIRECTLY PRESENT IN THE PROVIDED DOCUMENT:
+   - Every person, phone number, vehicle, bank account, amount, location, and relationship you extract MUST be explicitly mentioned in the document text.
+   - NEVER invent, assume, extrapolate, or bring in any data, names, crimes, or events from prior cases, standard templates, or general knowledge.
+2. DO NOT GENERATE MOCK OR PLACEHOLDER DATA:
+   - If the document does not mention phone numbers or calls, return "calls": [] and empty phone arrays.
+   - If the document does not mention financial transactions, return "transactions": [].
+   - If the document does not mention vehicles, return "vehicles": [].
+   - If the document does not mention organizations, return "organizations": [].
+   - If the document does not mention specific locations, return "locations": [].
+   - If the document does not mention legal sections, return "legal_sections": [].
+   - NEVER use placeholder names like "Unknown Person", "Sender Entity", "Receiver Entity", "John Doe", fake numbers like "0000000000", or dummy plates like "TS09AB0000".
+3. STRICT CASE METADATA:
+   - Extract title, case reference, summary, and jurisdiction strictly reflecting THIS specific document.
+4. KNOWLEDGE GRAPH TOPOLOGY:
+   - Create nodes and links ONLY between entities that are actually mentioned in this document.
+   - Do NOT include any nodes or links for entities not in this document.
 
 Output your analysis strictly in valid JSON format adhering to the following JSON structure:
-
 {
   "case_meta": {
-    "case_number": "FIR or Case reference (e.g. FIR-112/2026)",
-    "title": "Clear concise investigative title",
-    "summary": "2-4 sentence executive summary of the criminal incident and modus operandi",
-    "incident_date": "YYYY-MM-DD or approximate date",
-    "jurisdiction": "Police station or jurisdiction",
-    "legal_sections": ["IPC 420", "IPC 120B", "PMLA Sec 3"]
+    "case_number": "FIR or Case reference stated in the document (or null if not stated)",
+    "title": "Clear concise investigative title based solely on this document",
+    "summary": "2-4 sentence factual summary of the incident described in this document",
+    "incident_date": "YYYY-MM-DD or approximate date mentioned in text, or null",
+    "jurisdiction": "Police station or jurisdiction mentioned in text, or null",
+    "legal_sections": ["Legal sections explicitly cited in the document, or empty array if none"]
   },
   "persons": [
     {
-      "name": "Full Name",
+      "name": "Full Name as stated in document",
       "dob": "YYYY-MM-DD or null",
-      "gender": "Male/Female/Other",
-      "address": "Address or area",
-      "phone_numbers": ["Phone number strings"],
-      "known_aliases": ["Alias 1", "Alias 2"],
-      "occupation": "Occupation or cover business",
+      "gender": "Male or Female or Other or null",
+      "address": "Address mentioned in text or null",
+      "phone_numbers": ["Phone numbers explicitly associated with this person in text"],
+      "known_aliases": ["Aliases mentioned in text"],
+      "occupation": "Occupation mentioned in text or null",
       "status": "SUSPECT | PERSON_OF_INTEREST | ASSOCIATE | WITNESS | VICTIM",
-      "role_description": "Specific role in the crime or syndicate",
+      "role_description": "Specific role as described in this document",
       "confidence_score": 0.95
     }
   ],
   "calls": [
     {
-      "caller_number": "10-digit phone number",
-      "caller_name": "Name of caller",
-      "receiver_number": "10-digit phone number",
-      "receiver_name": "Name of receiver",
+      "caller_number": "Phone number",
+      "caller_name": "Name if mentioned",
+      "receiver_number": "Phone number",
+      "receiver_name": "Name if mentioned",
       "date": "YYYY-MM-DD",
       "time": "HH:MM:SS",
       "duration_seconds": 180,
@@ -53,72 +71,72 @@ Output your analysis strictly in valid JSON format adhering to the following JSO
   ],
   "transactions": [
     {
-      "sender_name": "Sender Person / Entity",
-      "sender_account": "Account number or identifier",
-      "receiver_name": "Receiver Person / Entity",
-      "receiver_account": "Account number or identifier",
+      "sender_name": "Sender name from text",
+      "sender_account": "Account number from text or null",
+      "receiver_name": "Receiver name from text",
+      "receiver_account": "Account number from text or null",
       "amount": 500000.0,
       "currency": "INR",
       "date": "YYYY-MM-DD",
       "time": "HH:MM:SS",
-      "transaction_id": "TXN_ID or Reference",
-      "bank_name": "Bank Name",
+      "transaction_id": "TXN ID if mentioned or null",
+      "bank_name": "Bank Name if mentioned",
       "payment_type": "Hawala | Bank Transfer | Cash | UPI | Crypto"
     }
   ],
   "locations": [
     {
-      "name": "Location Name (e.g., Safehouse / Meeting Spot / Hideout)",
-      "address": "Full physical address or Landmark",
+      "name": "Location Name mentioned in text",
+      "address": "Address or area mentioned in text",
       "latitude": 17.4156,
       "longitude": 78.4750,
       "date": "YYYY-MM-DD",
       "time": "HH:MM:SS",
-      "associated_persons": ["Names of persons at location"]
+      "associated_persons": ["Names of persons at location mentioned in text"]
     }
   ],
   "vehicles": [
     {
-      "registration_number": "Plate number (e.g. TS09AB1234)",
+      "registration_number": "Plate number mentioned in text",
       "vehicle_type": "Car | SUV | Motorcycle | Truck",
-      "make_model": "Make and Model",
+      "make_model": "Make and Model mentioned in text",
       "color": "Color",
-      "owner_name": "Owner or Driver Name",
-      "associated_persons": ["Names of persons using vehicle"]
+      "owner_name": "Owner Name from text",
+      "associated_persons": ["Names of persons associated with vehicle in text"]
     }
   ],
   "organizations": [
     {
-      "name": "Organization / Shell Company / Gang Name",
+      "name": "Organization / Company name from text",
       "org_type": "Shell Company | Front Business | Gang | Syndicate",
       "registration_number": "Registration / CIN / GST or null",
-      "address": "Address or city",
-      "key_persons": ["Key directors / handlers"]
+      "address": "Address or null",
+      "key_persons": ["Key individuals associated with organization in text"]
     }
   ],
   "relationships": [
     {
-      "person_a": "Person A Name",
-      "person_b": "Person B Name",
-      "relationship_type": "CO_CONSPIRATOR | SAW_SUSPECT | ACCOMPLICE | SPOUSE | HANDLER | FINANCIAL_BACKER | GANG_MEMBER",
-      "description": "Evidence-backed relationship description"
+      "person_a": "Person A Name from text",
+      "person_b": "Person B Name from text",
+      "relationship_type": "CO_CONSPIRATOR | SAW_SUSPECT | ACCOMPLICE | SPOUSE | HANDLER | FINANCIAL_BACKER | GANG_MEMBER | ASSOCIATE",
+      "description": "Evidence-backed relationship description from text"
     }
   ],
   "evidence_items": [
     {
       "title": "Evidence Title",
-      "file_name": "Original document or seized item",
+      "file_name": "Document name or seized item",
       "evidence_type": "FIR | Financial Statement | CDR Log | Interrogation Transcript | CCTV Footage | Confession",
-      "description": "Summary of evidence relevance"
+      "description": "Summary of relevance"
     }
   ],
   "graph_topology": {
     "nodes": [
       {
-        "id": "unique_node_id (e.g. n_person_raj_kumar)",
-        "label": "Display Label (e.g. Raj Kumar)",
+        "id": "unique_node_id",
+        "label": "Display Label",
         "type": "Person | Phone | Location | Vehicle | Organization | BankAccount",
-        "subType": "SUSPECT | SHELL_COMPANY | SAFEHOUSE | etc.",
+        "subType": "SUSPECT | WITNESS | etc.",
         "properties": {}
       }
     ],
@@ -127,14 +145,12 @@ Output your analysis strictly in valid JSON format adhering to the following JSO
         "id": "link_id",
         "source": "source_node_id",
         "target": "target_node_id",
-        "label": "CALLED | TRANSFERRED_MONEY_TO | SUSPECT_IN | OWNS_VEHICLE | OPERATES_SHELL_CO | LOCATED_AT | SAW_SUSPECT | CO_CONSPIRATOR",
+        "label": "CALLED | TRANSFERRED_MONEY_TO | ASSOCIATE_OF | LOCATED_AT | OWNS_VEHICLE",
         "properties": {}
       }
     ]
   }
 }
-
-Be thorough, precise, and synthesize accurate Knowledge Graph linkages between the suspects, their bank accounts, phones, vehicles, and crime locations.
 """
 
 
@@ -237,7 +253,14 @@ class GroqDocumentExtractor:
                                 {"role": "system", "content": INVESTIGATION_EXTRACTION_PROMPT},
                                 {
                                     "role": "user",
-                                    "content": f"Analyze the following criminal investigation document titled '{document_name}':\n\n{document_text}",
+                                    "content": (
+                                        f"Analyze ONLY the following criminal investigation document titled '{document_name}'.\n"
+                                        "Extract ONLY the entities, persons, events, phone numbers, and relations directly stated in the text below.\n"
+                                        "Do NOT include or assume any information from prior cases or other sources.\n\n"
+                                        f"=== BEGIN DOCUMENT: {document_name} ===\n"
+                                        f"{document_text}\n"
+                                        f"=== END DOCUMENT: {document_name} ==="
+                                    ),
                                 },
                             ],
                             response_format={"type": "json_object"},
@@ -262,14 +285,15 @@ class GroqDocumentExtractor:
 
     def _sanitize_and_ensure_graph(self, data: Dict[str, Any], document_name: str) -> Dict[str, Any]:
         """Ensures that all required entity arrays and graph topologies are present and well-formed."""
-        if "case_meta" not in data:
+        if "case_meta" not in data or not isinstance(data.get("case_meta"), dict):
+            clean_doc_title = document_name.rsplit(".", 1)[0].replace("_", " ")
             data["case_meta"] = {
                 "case_number": f"CR-{datetime.now().year}-{uuid.uuid4().hex[:5].upper()}",
-                "title": f"Investigation of {document_name}",
-                "summary": "Document analyzed and extracted into criminal knowledge graph.",
+                "title": f"Investigation: {clean_doc_title}",
+                "summary": f"Entities and intelligence extracted strictly from document '{document_name}'.",
                 "incident_date": datetime.now().strftime("%Y-%m-%d"),
-                "jurisdiction": "Hyderabad Police Intelligence",
-                "legal_sections": ["IPC 420", "IPC 120B"],
+                "jurisdiction": "Investigating Agency",
+                "legal_sections": [],
             }
 
         for key in ["persons", "calls", "transactions", "locations", "vehicles", "organizations", "relationships", "evidence_items"]:
@@ -435,6 +459,9 @@ class GroqDocumentExtractor:
         fir_match = re.search(r"(?:FIR\s*(?:No\.?)?|Case\s*(?:No\.?)?|CR-?)\s*[:#\-]?\s*([A-Za-z0-9\/\-_]+)", text, re.IGNORECASE)
         case_num = fir_match.group(1) if fir_match else f"CR-{datetime.now().year}-{uuid.uuid4().hex[:4].upper()}"
 
+        # Extract legal sections strictly from text (e.g. IPC 420, Sec 120B, Section 302)
+        legal_sections = list(set(re.findall(r"\b(?:(?:Sec(?:tion)?\.?|IPC|BNS|CrPC|PMLA|NDPS)\s*(?:Sec(?:tion)?)?\s*\d+[A-Za-z]*)\b", text, re.IGNORECASE)))
+
         # Extract Phone numbers
         phone_matches = list(set(re.findall(r"\b(?:(?:\+91|0)?[\s-]?)?([6-9]\d{9})\b", text)))
 
@@ -456,7 +483,6 @@ class GroqDocumentExtractor:
         name_patterns = [
             r"(?:Accused|Suspect|Target|Subject|Complainant|Witness|Associate|Person|Director|Officer)\s*(?:Name)?\s*[:\-]\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
             r"(?:Mr\.|Ms\.|Insp\.|SI|Shri)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
-            r"\b([A-Z][a-z]+\s+[A-Z][a-z]+)\b",
         ]
         seen_names = set()
         for pat in name_patterns:
@@ -483,41 +509,28 @@ class GroqDocumentExtractor:
                 "confidence_score": 0.90,
             })
 
-        # Calls if at least 2 phones/persons found
+        # Calls: empty unless explicit call record found
         calls = []
-        if len(phone_matches) >= 2:
-            calls.append({
-                "caller_number": phone_matches[0],
-                "caller_name": person_candidates[0] if len(person_candidates) > 0 else "Caller",
-                "receiver_number": phone_matches[1],
-                "receiver_name": person_candidates[1] if len(person_candidates) > 1 else "Receiver",
-                "date": datetime.now().strftime("%Y-%m-%d"),
-                "time": "12:00:00",
-                "duration_seconds": 180,
-                "call_type": "Outgoing",
-                "cell_tower_id": "CELL-TWR-01",
-            })
 
-        # Transactions if amounts found
+        # Transactions: empty unless amount and explicit entities found
         transactions = []
-        for idx, amt in enumerate(amounts_found[:4]):
-            s_name = person_candidates[0] if len(person_candidates) > 0 else "Sender Entity"
-            r_name = person_candidates[1] if len(person_candidates) > 1 else "Receiver Entity"
-            transactions.append({
-                "sender_name": s_name,
-                "sender_account": f"ACC-{uuid.uuid4().hex[:4].upper()}",
-                "receiver_name": r_name,
-                "receiver_account": f"ACC-{uuid.uuid4().hex[:4].upper()}",
-                "amount": amt,
-                "currency": "INR",
-                "date": datetime.now().strftime("%Y-%m-%d"),
-                "time": "12:00:00",
-                "transaction_id": f"TXN{uuid.uuid4().hex[:6].upper()}",
-                "bank_name": "Scheduled Bank",
-                "payment_type": "Bank / Hawala Transfer",
-            })
+        if amounts_found and len(person_candidates) >= 2:
+            for idx, amt in enumerate(amounts_found[:3]):
+                transactions.append({
+                    "sender_name": person_candidates[0],
+                    "sender_account": None,
+                    "receiver_name": person_candidates[1],
+                    "receiver_account": None,
+                    "amount": amt,
+                    "currency": "INR",
+                    "date": datetime.now().strftime("%Y-%m-%d"),
+                    "time": "12:00:00",
+                    "transaction_id": f"TXN{uuid.uuid4().hex[:6].upper()}",
+                    "bank_name": "Bank Specified in Record",
+                    "payment_type": "Financial Transfer",
+                })
 
-        # Vehicles
+        # Vehicles: only if real plates were found in the text
         vehicles = []
         for idx, v_reg in enumerate(vehicles_found[:3]):
             vehicles.append({
@@ -529,13 +542,14 @@ class GroqDocumentExtractor:
                 "associated_persons": person_candidates[:2],
             })
 
-        # Locations (extract words near street/road/city)
+        # Locations: extract words strictly matching location patterns
         locations = []
-        loc_matches = re.findall(r"\b([A-Z][a-zA-Z\s]{3,25}(?:Hills|Road|Street|Towers|Nagar|Colony|City|Hub|Safehouse|Station|PS))\b", text)
+        loc_matches = re.findall(r"\b([A-Z][a-zA-Z\s]{3,25}(?:Hills|Road|Street|Towers|Nagar|Colony|City|Hub|Station|PS))\b", text)
         for loc_name in list(set(loc_matches))[:3]:
+            clean_loc = loc_name.strip()
             locations.append({
-                "name": loc_name.strip(),
-                "address": f"{loc_name.strip()}, Telangana",
+                "name": clean_loc,
+                "address": clean_loc,
                 "latitude": 17.4156,
                 "longitude": 78.4750,
                 "date": datetime.now().strftime("%Y-%m-%d"),
@@ -549,20 +563,21 @@ class GroqDocumentExtractor:
             relationships.append({
                 "person_a": person_candidates[0],
                 "person_b": person_candidates[1],
-                "relationship_type": "CO_CONSPIRATOR",
+                "relationship_type": "ASSOCIATE",
                 "description": f"Direct link identified between {person_candidates[0]} and {person_candidates[1]} in document text.",
             })
 
+        clean_title = document_name.rsplit(".", 1)[0].replace("_", " ")
         data = {
             "is_ai_generated": False,
             "model_used": "dynamic-text-parser",
             "case_meta": {
                 "case_number": case_num,
-                "title": f"Investigation of {document_name.replace('.pdf', '').replace('.txt', '')}",
+                "title": f"Investigation: {clean_title}",
                 "summary": doc_summary,
                 "incident_date": datetime.now().strftime("%Y-%m-%d"),
                 "jurisdiction": "Police Crime Intelligence",
-                "legal_sections": ["IPC 420", "IPC 120B"],
+                "legal_sections": legal_sections,
             },
             "persons": persons,
             "calls": calls,

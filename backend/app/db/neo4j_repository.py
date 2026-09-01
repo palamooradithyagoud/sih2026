@@ -11,6 +11,7 @@ from neo4j import Driver, Session
 from neo4j.exceptions import Neo4jError, ConstraintError, ServiceUnavailable
 
 from app.db.neo4j import get_neo4j_driver
+from app.db.local_graph_store import LocalGraphStore
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -136,10 +137,13 @@ class Neo4jRepository:
     """
     Production repository layer for Neo4j Graph Database.
     All Cypher queries are strictly parameterized to prevent Cypher injection.
+    Seamlessly falls back to LocalGraphStore when Neo4j is offline.
     """
 
     def __init__(self, driver: Optional[Driver] = None):
         self._custom_driver = driver
+        self._local_store = LocalGraphStore()
+        self._neo4j_offline = False
 
     @property
     def driver(self) -> Optional[Driver]:
@@ -164,15 +168,30 @@ class Neo4jRepository:
     ) -> List[Dict[str, Any]]:
         """Safely executes a read-only Cypher query with parameters."""
         params = parameters or {}
+        if getattr(self, "_neo4j_offline", False):
+            if "MATCH (p:Person)" in query:
+                return self._local_store.find_persons_by_name_or_phone(params.get("name", ""), params.get("phone"))
+            if "count(n) AS cnt" in query:
+                ent_id = params.get("id", "")
+                exists = self._local_store.check_entity_exists("Case", ent_id) or self._local_store.check_entity_exists("Node", ent_id)
+                return [{"cnt": 1 if exists else 0}]
+            return []
         try:
             with self._get_session() as session:
                 result = session.run(query, params)
                 if hasattr(result, "data") and callable(result.data):
                     return result.data()
                 return [record.data() if hasattr(record, "data") and callable(record.data) else record for record in result]
-        except ServiceUnavailable as e:
-            logger.error(f"Neo4j service unavailable during read: {e}")
-            raise Neo4jRepositoryError(f"Database connection error: {e}") from e
+        except (ServiceUnavailable, Neo4jRepositoryError) as e:
+            logger.warning(f"Neo4j service unavailable during read ({e}). Switching to LocalGraphStore.")
+            self._neo4j_offline = True
+            if "MATCH (p:Person)" in query:
+                return self._local_store.find_persons_by_name_or_phone(params.get("name", ""), params.get("phone"))
+            if "count(n) AS cnt" in query:
+                ent_id = params.get("id", "")
+                exists = self._local_store.check_entity_exists("Case", ent_id) or self._local_store.check_entity_exists("Node", ent_id)
+                return [{"cnt": 1 if exists else 0}]
+            return []
         except Neo4jError as e:
             logger.error(f"Neo4j Cypher read error: {e.message} (Code: {e.code})")
             raise Neo4jRepositoryError(f"Graph query failed: {e.message}") from e
@@ -182,6 +201,8 @@ class Neo4jRepository:
     ) -> List[Dict[str, Any]]:
         """Safely executes a write Cypher transaction with parameters."""
         params = parameters or {}
+        if getattr(self, "_neo4j_offline", False):
+            return []
         try:
             with self._get_session() as session:
                 result = session.run(query, params)
@@ -191,12 +212,14 @@ class Neo4jRepository:
         except ConstraintError as e:
             logger.warning(f"Neo4j constraint violation: {e.message}")
             raise DuplicateEntityError(f"Constraint violation: {e.message}") from e
-        except ServiceUnavailable as e:
-            logger.error(f"Neo4j service unavailable during write: {e}")
-            raise Neo4jRepositoryError(f"Database connection error: {e}") from e
+        except (ServiceUnavailable, Neo4jRepositoryError) as e:
+            logger.warning(f"Neo4j service unavailable during write ({e}). Switching to LocalGraphStore.")
+            self._neo4j_offline = True
+            return []
         except Neo4jError as e:
             logger.error(f"Neo4j Cypher write error: {e.message} (Code: {e.code})")
             raise Neo4jRepositoryError(f"Graph transaction failed: {e.message}") from e
+
 
     def _validate_label(self, label: str) -> str:
         """Validates that a node label is in the authorized whitelist."""
@@ -402,7 +425,11 @@ class Neo4jRepository:
             case_id: c.id,
             case_number: c.case_number,
             title: c.title,
+            description: c.description,
             lead_officer: c.lead_officer,
+            station: c.station,
+            priority: c.priority,
+            created_at: c.created_at,
             total_persons: total_persons,
             total_phones: total_phones,
             total_calls: total_calls,
@@ -1723,6 +1750,69 @@ class Neo4jRepository:
         })
         return bool(records)
 
+
+# ============================================================================
+# RESILIENT LOCAL FALLBACK HOOKS
+# ============================================================================
+
+def fallback_on_neo4j_error(func):
+    """
+    Decorator for Neo4jRepository methods that intercepts Neo4j connection errors
+    (ServiceUnavailable, routing failure, timeouts) and delegates seamlessly to self._local_store.
+    """
+    def wrapper(self, *args, **kwargs):
+        name = func.__name__
+        local_fn = getattr(self._local_store, name, None)
+        if getattr(self, "_neo4j_offline", False):
+            if local_fn:
+                return local_fn(*args, **kwargs)
+            return func(self, *args, **kwargs)
+
+        try:
+            res = func(self, *args, **kwargs)
+            if local_fn and name.startswith(("create_", "link_")):
+                try:
+                    local_fn(*args, **kwargs)
+                except Exception:
+                    pass
+            return res
+        except (EntityNotFoundError, DuplicateEntityError, InvalidRelationshipTypeError):
+            raise
+        except Exception as e:
+            err_msg = str(e).lower()
+            if (
+                isinstance(e, (ServiceUnavailable, Neo4jRepositoryError))
+                or "routing" in err_msg
+                or "connection" in err_msg
+                or "unreachable" in err_msg
+                or "timed out" in err_msg
+                or "refused" in err_msg
+                or "closed" in err_msg
+                or "unavailable" in err_msg
+            ):
+                logger.warning(f"Neo4j offline in '{name}': {e}. Falling back to LocalGraphStore.")
+                self._neo4j_offline = True
+                if local_fn:
+                    return local_fn(*args, **kwargs)
+            raise
+    return wrapper
+
+
+def _apply_fallback_to_repo(cls):
+    for attr_name, attr_val in list(cls.__dict__.items()):
+        if (
+            callable(attr_val)
+            and not attr_name.startswith("__")
+            and not attr_name.startswith("_execute_")
+            and not attr_name.startswith("_validate_")
+            and attr_name != "_get_session"
+            and attr_name != "driver"
+        ):
+            setattr(cls, attr_name, fallback_on_neo4j_error(attr_val))
+    return cls
+
+
+_apply_fallback_to_repo(Neo4jRepository)
 
 # Global singleton instance
 neo4j_repo = Neo4jRepository()

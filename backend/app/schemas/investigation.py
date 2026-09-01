@@ -298,7 +298,11 @@ class CaseSummary(BaseModel):
     case_id: str
     case_number: str
     title: str
+    description: Optional[str] = None
     lead_officer: str
+    station: Optional[str] = None
+    priority: Optional[str] = "HIGH"
+    created_at: Optional[str] = None
     total_persons: int
     total_calls: int
     total_transactions: int

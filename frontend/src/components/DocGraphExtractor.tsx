@@ -29,6 +29,7 @@ import {
   Check,
   FileCode,
   FileCheck,
+  Activity,
 } from "lucide-react";
 import { investigationApi } from "@/lib/investigationApi";
 import {
@@ -44,6 +45,33 @@ interface DocGraphExtractorProps {
   onNavigateToCases?: () => void;
 }
 
+const DEFAULT_SAMPLE_DOCUMENTS: SampleDocumentMeta[] = [
+  {
+    id: "fir_cyber_syndicate",
+    title: "FIR No. 118/2026: Multi-Crore Cyber Hawala & Loan App Syndicate",
+    category: "FIR / Complaint Docket",
+    station: "Cyber Crime Police Station, Cyberabad",
+    preview:
+      "FIRST INFORMATION REPORT (Under Section 154 Cr.P.C.)\nPolice Station: Cyber Crime PS, Cyberabad Commissionerate\nFIR No: 118/2026 | Date: 2026-08-24 14:30 IST\nActs & Sections: Sec 420, 120B, 384, 506 IPC & Sec 66D Information Technology Act...",
+  },
+  {
+    id: "interrogation_hawala_smuggling",
+    title: "Interrogation Transcript: Gold Bullion & Offshore Hawala Transit",
+    category: "Interrogation Transcript",
+    station: "Central Crime Station (CCS), Detective Department, Hyderabad",
+    preview:
+      "RECORD OF CONFESSIONAL STATEMENT / INTERROGATION\nStation: Central Crime Station, Hyderabad | Date: 2026-08-26\nCase Reference: CR-2026-00421 | Interrogating Officer: Insp. Adithya...",
+  },
+  {
+    id: "cdr_surveillance_report",
+    title: "CDR & Tower Geo-Spatial Surveillance Analysis Report",
+    category: "CDR & Telecom Intelligence",
+    station: "Technical Intelligence Cell, Intelligence Department, Hyderabad",
+    preview:
+      "SPECIAL TECHNICAL SURVEILLANCE & CDR INTELLIGENCE REPORT\nDocket: TIC-HYD-2026-8801 | Date: 2026-08-28\nTARGET IDENTIFIERS:\n1. Target A: +91 9876543210 (Raj Kumar)\n2. Target B: +91 9988776655 (Ahmed Khan)...",
+  },
+];
+
 export default function DocGraphExtractor({
   caseId,
   onExtractionSuccess,
@@ -52,6 +80,8 @@ export default function DocGraphExtractor({
 }: DocGraphExtractorProps) {
   // Input Modes (PDF & File Upload is primary)
   const [inputMode, setInputMode] = useState<"upload" | "text" | "samples">("upload");
+  // Extraction Boundary Scope ('new' ensures zero contamination from existing cases)
+  const [targetScope, setTargetScope] = useState<"new" | "existing">("new");
 
   // Integration Status
   const [integrations, setIntegrations] = useState<IntegrationStatus | null>(null);
@@ -64,8 +94,9 @@ export default function DocGraphExtractor({
   const [apiKeySaved, setApiKeySaved] = useState(false);
 
   // Sample Documents
-  const [samples, setSamples] = useState<SampleDocumentMeta[]>([]);
+  const [samples, setSamples] = useState<SampleDocumentMeta[]>(DEFAULT_SAMPLE_DOCUMENTS);
   const [selectedSampleId, setSelectedSampleId] = useState<string>("fir_cyber_syndicate");
+  const [backendOffline, setBackendOffline] = useState(false);
 
   // File Upload State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -101,8 +132,10 @@ export default function DocGraphExtractor({
       setCheckingIntegrations(true);
       const res = await investigationApi.getIntegrationStatus();
       setIntegrations(res);
+      setBackendOffline(false);
     } catch (e) {
       console.warn("Failed to load integrations status", e);
+      setBackendOffline(true);
     } finally {
       setCheckingIntegrations(false);
     }
@@ -111,7 +144,9 @@ export default function DocGraphExtractor({
   const loadSamples = async () => {
     try {
       const res = await investigationApi.getSampleDocuments();
-      setSamples(res);
+      if (res && res.length > 0) {
+        setSamples(res);
+      }
     } catch (e) {
       console.warn("Failed to load sample documents", e);
     }
@@ -168,11 +203,13 @@ export default function DocGraphExtractor({
     try {
       let result: DocumentExtractionResult;
       const activeKey = customGroqKey.trim() || undefined;
+      // If targetScope is 'new', do NOT send existing caseId. The backend creates a clean dedicated case.
+      const effectiveCaseId = targetScope === "existing" && caseId ? caseId : undefined;
 
       if (source === "sample") {
         result = await investigationApi.extractSampleDocument(
           selectedSampleId,
-          caseId,
+          effectiveCaseId,
           activeKey
         );
       } else if (source === "file" && selectedFile) {
@@ -180,7 +217,9 @@ export default function DocGraphExtractor({
         formData.append("file", selectedFile);
         formData.append("document_name", selectedFile.name);
         formData.append("document_type", documentType);
-        formData.append("case_id", caseId);
+        if (effectiveCaseId) {
+          formData.append("case_id", effectiveCaseId);
+        }
         if (activeKey) formData.append("groq_api_key", activeKey);
 
         result = await investigationApi.uploadAndExtractDocument(formData);
@@ -192,7 +231,7 @@ export default function DocGraphExtractor({
           document_text: rawText,
           document_name: documentTitle || "Document_Transcript.txt",
           document_type: documentType,
-          case_id: caseId,
+          case_id: effectiveCaseId,
           groq_api_key: activeKey,
         });
       } else {
@@ -292,6 +331,56 @@ export default function DocGraphExtractor({
               >
                 {integrations?.groq?.configured || customGroqKey ? "Active (70B)" : "Ready (Demo Mode)"}
               </span>
+            </div>
+
+            {/* Backend Server Status */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                padding: "0.4rem 0.75rem",
+                borderRadius: "var(--radius-sm)",
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid var(--border-color)",
+                fontSize: "0.75rem",
+              }}
+            >
+              <Activity
+                size={13}
+                style={{
+                  color: backendOffline ? "#ef4444" : "var(--accent-emerald)",
+                }}
+              />
+              <span>Backend API:</span>
+              <span
+                style={{
+                  color: backendOffline ? "#f87171" : "var(--accent-emerald)",
+                  fontWeight: 600,
+                }}
+              >
+                {backendOffline ? "Offline (Port 8000)" : "Online (Port 8000)"}
+              </span>
+              {backendOffline && (
+                <button
+                  onClick={() => {
+                    loadIntegrations();
+                    loadSamples();
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--accent-cyan)",
+                    cursor: "pointer",
+                    padding: "0 2px",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  title="Retry backend connection"
+                >
+                  <RefreshCw size={11} />
+                </button>
+              )}
             </div>
 
             {/* Supabase Status */}
@@ -489,6 +578,68 @@ export default function DocGraphExtractor({
             </button>
           </div>
 
+          {/* Target Extraction Scope: Fresh Isolated Case vs Append to Active Case */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0.55rem 0.85rem",
+              borderRadius: "var(--radius-sm)",
+              background: "rgba(255, 255, 255, 0.02)",
+              border: "1px solid var(--border-color)",
+              gap: "0.75rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.74rem" }}>
+              <ShieldCheck size={14} style={{ color: "var(--accent-cyan)" }} />
+              <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>Case Scope:</span>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.35rem" }}>
+              <button
+                type="button"
+                onClick={() => setTargetScope("new")}
+                style={{
+                  padding: "0.25rem 0.65rem",
+                  borderRadius: "4px",
+                  border: targetScope === "new" ? "1px solid var(--accent-cyan)" : "1px solid transparent",
+                  background: targetScope === "new" ? "rgba(6, 182, 212, 0.15)" : "transparent",
+                  color: targetScope === "new" ? "var(--accent-cyan)" : "var(--text-muted)",
+                  fontSize: "0.72rem",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  transition: "all 0.15s ease",
+                }}
+                title="Create a fresh isolated case with ONLY this document's entities (no existing data merged)"
+              >
+                ✓ Isolated Case (Only This Document)
+              </button>
+
+              {caseId && (
+                <button
+                  type="button"
+                  onClick={() => setTargetScope("existing")}
+                  style={{
+                    padding: "0.25rem 0.65rem",
+                    borderRadius: "4px",
+                    border: targetScope === "existing" ? "1px solid var(--accent-cyan)" : "1px solid transparent",
+                    background: targetScope === "existing" ? "rgba(6, 182, 212, 0.15)" : "transparent",
+                    color: targetScope === "existing" ? "var(--accent-cyan)" : "var(--text-muted)",
+                    fontSize: "0.72rem",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    transition: "all 0.15s ease",
+                  }}
+                  title="Merge extracted entities into the currently active case"
+                >
+                  Append to Active Case
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Mode 1: Preloaded Realistic Crime Samples */}
           {inputMode === "samples" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -638,24 +789,7 @@ export default function DocGraphExtractor({
                 )}
               </div>
 
-              <div>
-                <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>
-                  Document Classification
-                </label>
-                <select
-                  value={documentType}
-                  onChange={(e) => setDocumentType(e.target.value)}
-                  className="form-input"
-                  style={{ width: "100%", fontSize: "0.8rem" }}
-                >
-                  <option value="FIR">First Information Report (FIR)</option>
-                  <option value="Charge Sheet">Charge Sheet & Police Report</option>
-                  <option value="Interrogation">Interrogation Transcript / Confession</option>
-                  <option value="CDR Analysis">CDR & Telecom Geo-Spatial Log</option>
-                  <option value="Bank Statement">Bank / Financial Intelligence Statement</option>
-                  <option value="Witness Statement">Witness / Informant Statement</option>
-                </select>
-              </div>
+
 
               <button
                 onClick={() => runExtraction("file")}
@@ -751,19 +885,49 @@ export default function DocGraphExtractor({
           {errorMessage && (
             <div
               style={{
-                padding: "0.75rem",
+                padding: "0.85rem 1rem",
                 borderRadius: "var(--radius-sm)",
-                background: "rgba(239, 68, 68, 0.15)",
+                background: "rgba(239, 68, 68, 0.12)",
                 border: "1px solid rgba(239, 68, 68, 0.4)",
-                color: "#f87171",
+                color: "#fca5a5",
                 fontSize: "0.78rem",
                 display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
+                flexDirection: "column",
+                gap: "0.45rem",
               }}
             >
-              <AlertCircle size={15} />
-              <span>{errorMessage}</span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
+                <span style={{ fontWeight: 600, wordBreak: "break-word" }}>{errorMessage}</span>
+              </div>
+              {errorMessage.includes("FastAPI backend") && (
+                <div
+                  style={{
+                    marginTop: "0.3rem",
+                    padding: "0.5rem 0.75rem",
+                    background: "rgba(0, 0, 0, 0.35)",
+                    borderRadius: "4px",
+                    fontSize: "0.74rem",
+                    color: "var(--text-secondary)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <div>Ensure the Python FastAPI backend is started in the <code>backend/</code> directory:</div>
+                  <code
+                    style={{
+                      display: "block",
+                      marginTop: "0.3rem",
+                      padding: "0.35rem 0.6rem",
+                      background: "rgba(0, 0, 0, 0.45)",
+                      color: "var(--accent-cyan)",
+                      borderRadius: "3px",
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    cd backend ; uvicorn app.main:app --reload --port 8000
+                  </code>
+                </div>
+              )}
             </div>
           )}
         </div>
