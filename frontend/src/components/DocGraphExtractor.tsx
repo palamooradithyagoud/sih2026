@@ -34,7 +34,6 @@ import {
 import { investigationApi } from "@/lib/investigationApi";
 import {
   IntegrationStatus,
-  SampleDocumentMeta,
   DocumentExtractionResult,
 } from "@/types/investigation";
 
@@ -45,33 +44,6 @@ interface DocGraphExtractorProps {
   onNavigateToCases?: () => void;
 }
 
-const DEFAULT_SAMPLE_DOCUMENTS: SampleDocumentMeta[] = [
-  {
-    id: "fir_cyber_syndicate",
-    title: "FIR No. 118/2026: Multi-Crore Cyber Hawala & Loan App Syndicate",
-    category: "FIR / Complaint Docket",
-    station: "Cyber Crime Police Station, Cyberabad",
-    preview:
-      "FIRST INFORMATION REPORT (Under Section 154 Cr.P.C.)\nPolice Station: Cyber Crime PS, Cyberabad Commissionerate\nFIR No: 118/2026 | Date: 2026-08-24 14:30 IST\nActs & Sections: Sec 420, 120B, 384, 506 IPC & Sec 66D Information Technology Act...",
-  },
-  {
-    id: "interrogation_hawala_smuggling",
-    title: "Interrogation Transcript: Gold Bullion & Offshore Hawala Transit",
-    category: "Interrogation Transcript",
-    station: "Central Crime Station (CCS), Detective Department, Hyderabad",
-    preview:
-      "RECORD OF CONFESSIONAL STATEMENT / INTERROGATION\nStation: Central Crime Station, Hyderabad | Date: 2026-08-26\nCase Reference: CR-2026-00421 | Interrogating Officer: Insp. Adithya...",
-  },
-  {
-    id: "cdr_surveillance_report",
-    title: "CDR & Tower Geo-Spatial Surveillance Analysis Report",
-    category: "CDR & Telecom Intelligence",
-    station: "Technical Intelligence Cell, Intelligence Department, Hyderabad",
-    preview:
-      "SPECIAL TECHNICAL SURVEILLANCE & CDR INTELLIGENCE REPORT\nDocket: TIC-HYD-2026-8801 | Date: 2026-08-28\nTARGET IDENTIFIERS:\n1. Target A: +91 9876543210 (Raj Kumar)\n2. Target B: +91 9988776655 (Ahmed Khan)...",
-  },
-];
-
 export default function DocGraphExtractor({
   caseId,
   onExtractionSuccess,
@@ -79,7 +51,7 @@ export default function DocGraphExtractor({
   onNavigateToCases,
 }: DocGraphExtractorProps) {
   // Input Modes (PDF & File Upload is primary)
-  const [inputMode, setInputMode] = useState<"upload" | "text" | "samples">("upload");
+  const [inputMode, setInputMode] = useState<"upload" | "text">("upload");
   // Extraction Boundary Scope ('new' ensures zero contamination from existing cases)
   const [targetScope, setTargetScope] = useState<"new" | "existing">("new");
 
@@ -93,9 +65,6 @@ export default function DocGraphExtractor({
   const [customSupabaseUrl, setCustomSupabaseUrl] = useState<string>("");
   const [apiKeySaved, setApiKeySaved] = useState(false);
 
-  // Sample Documents
-  const [samples, setSamples] = useState<SampleDocumentMeta[]>(DEFAULT_SAMPLE_DOCUMENTS);
-  const [selectedSampleId, setSelectedSampleId] = useState<string>("fir_cyber_syndicate");
   const [backendOffline, setBackendOffline] = useState(false);
 
   // File Upload State
@@ -117,10 +86,9 @@ export default function DocGraphExtractor({
     "overview" | "persons" | "calls" | "transactions" | "locations" | "vehicles" | "organizations"
   >("overview");
 
-  // Load Integration Status and Samples on Mount
+  // Load Integration Status on Mount
   useEffect(() => {
     loadIntegrations();
-    loadSamples();
 
     // Check localStorage for Groq key
     const savedKey = localStorage.getItem("investigation_groq_api_key");
@@ -138,17 +106,6 @@ export default function DocGraphExtractor({
       setBackendOffline(true);
     } finally {
       setCheckingIntegrations(false);
-    }
-  };
-
-  const loadSamples = async () => {
-    try {
-      const res = await investigationApi.getSampleDocuments();
-      if (res && res.length > 0) {
-        setSamples(res);
-      }
-    } catch (e) {
-      console.warn("Failed to load sample documents", e);
     }
   };
 
@@ -189,7 +146,7 @@ export default function DocGraphExtractor({
   };
 
   // Pipeline Execution Runner
-  const runExtraction = async (source: "sample" | "file" | "text") => {
+  const runExtraction = async (source: "file" | "text") => {
     setIsProcessing(true);
     setErrorMessage(null);
     setLastResult(null);
@@ -206,13 +163,7 @@ export default function DocGraphExtractor({
       // If targetScope is 'new', do NOT send existing caseId. The backend creates a clean dedicated case.
       const effectiveCaseId = targetScope === "existing" && caseId ? caseId : undefined;
 
-      if (source === "sample") {
-        result = await investigationApi.extractSampleDocument(
-          selectedSampleId,
-          effectiveCaseId,
-          activeKey
-        );
-      } else if (source === "file" && selectedFile) {
+      if (source === "file" && selectedFile) {
         const formData = new FormData();
         formData.append("file", selectedFile);
         formData.append("document_name", selectedFile.name);
@@ -365,7 +316,6 @@ export default function DocGraphExtractor({
                 <button
                   onClick={() => {
                     loadIntegrations();
-                    loadSamples();
                   }}
                   style={{
                     background: "none",
@@ -512,28 +462,6 @@ export default function DocGraphExtractor({
           {/* Tabs Selector */}
           <div style={{ display: "flex", background: "rgba(0, 0, 0, 0.25)", padding: "0.25rem", borderRadius: "var(--radius-sm)", gap: "0.25rem" }}>
             <button
-              onClick={() => setInputMode("samples")}
-              style={{
-                flex: 1,
-                padding: "0.5rem",
-                borderRadius: "var(--radius-sm)",
-                border: "none",
-                fontSize: "0.78rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.4rem",
-                background: inputMode === "samples" ? "var(--bg-card)" : "transparent",
-                color: inputMode === "samples" ? "var(--accent-cyan)" : "var(--text-muted)",
-                boxShadow: inputMode === "samples" ? "0 2px 4px rgba(0,0,0,0.3)" : "none",
-              }}
-            >
-              <Zap size={14} /> 1-Click Samples
-            </button>
-
-            <button
               onClick={() => setInputMode("upload")}
               style={{
                 flex: 1,
@@ -639,86 +567,6 @@ export default function DocGraphExtractor({
               )}
             </div>
           </div>
-
-          {/* Mode 1: Preloaded Realistic Crime Samples */}
-          {inputMode === "samples" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                Select a high-fidelity investigative docket to extract entities and generate the connected Knowledge Graph in 1-click:
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                {samples.map((s) => {
-                  const isSelected = selectedSampleId === s.id;
-                  return (
-                    <div
-                      key={s.id}
-                      onClick={() => setSelectedSampleId(s.id)}
-                      style={{
-                        padding: "0.75rem 1rem",
-                        borderRadius: "var(--radius-sm)",
-                        border: isSelected ? "1px solid var(--accent-cyan)" : "1px solid var(--border-color)",
-                        background: isSelected ? "rgba(6, 182, 212, 0.08)" : "rgba(255, 255, 255, 0.02)",
-                        cursor: "pointer",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.25rem" }}>
-                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: isSelected ? "var(--accent-cyan)" : "var(--text-primary)" }}>
-                          {s.title}
-                        </div>
-                        <span
-                          style={{
-                            fontSize: "0.65rem",
-                            padding: "0.15rem 0.4rem",
-                            borderRadius: "4px",
-                            background: "rgba(255, 255, 255, 0.06)",
-                            color: "var(--text-muted)",
-                            border: "1px solid var(--border-color)",
-                          }}
-                        >
-                          {s.category}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
-                        {s.station}
-                      </div>
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontStyle: "italic", lineHeight: 1.4 }}>
-                        &quot;{s.preview}&quot;
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={() => runExtraction("sample")}
-                disabled={isProcessing}
-                className="btn-primary"
-                style={{
-                  width: "100%",
-                  padding: "0.75rem",
-                  marginTop: "0.5rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem",
-                  fontSize: "0.88rem",
-                  fontWeight: 700,
-                }}
-              >
-                {isProcessing ? (
-                  <>
-                    <RefreshCw size={16} className="spin" /> Processing with Groq 70B...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={16} /> Synthesize Knowledge Graph with Groq Llama-3.3
-                  </>
-                )}
-              </button>
-            </div>
-          )}
 
           {/* Mode 2: File Upload (PDF, DOCX, TXT) */}
           {inputMode === "upload" && (
