@@ -146,6 +146,10 @@ class LocalGraphStore:
         if person_id in self.nodes:
             self.nodes[person_id]["properties"]["status"] = role
             self.nodes[person_id]["properties"]["role"] = role
+            if notes:
+                self.nodes[person_id]["properties"]["notes"] = notes
+                if role == "SUSPECT":
+                    self.nodes[person_id]["properties"]["suspect_reason"] = notes
             self.nodes[person_id]["verification_status"] = verification_status
 
         p_node = self.nodes.get(person_id, {})

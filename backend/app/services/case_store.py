@@ -330,6 +330,8 @@ class CaseRepository:
                     "connected_suspect": p.connected_person_name,
                     "connection_type": p.connection_type,
                     "observation": p.connection_notes,
+                    "notes": p.notes,
+                    "suspect_reason": p.notes or p.connection_notes,
                     "sighting_location": p.sighting_location,
                     "sighting_date_time": p.sighting_date_time,
                 },

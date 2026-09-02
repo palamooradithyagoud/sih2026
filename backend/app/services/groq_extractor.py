@@ -316,14 +316,14 @@ class GroqDocumentExtractor:
         links = []
         node_ids = set()
 
-        def add_node(nid, label, ntype, sub_type=""):
+        def add_node(nid, label, ntype, sub_type="", props=None):
             if nid not in node_ids:
                 nodes.append({
                     "id": nid,
                     "label": label,
                     "type": ntype,
                     "subType": sub_type,
-                    "properties": {},
+                    "properties": props or {},
                 })
                 node_ids.add(nid)
 
@@ -332,7 +332,13 @@ class GroqDocumentExtractor:
             name = p.get("name", "Unknown Person")
             pid = f"p_{name.lower().replace(' ', '_')}"
             status = p.get("status", "SUSPECT")
-            add_node(pid, name, "Person", status)
+            role_desc = p.get("role_description") or p.get("occupation") or ""
+            add_node(pid, name, "Person", status, {
+                "role_description": role_desc,
+                "status": status,
+                "occupation": p.get("occupation"),
+                "address": p.get("address"),
+            })
 
             # Phones
             for ph in p.get("phone_numbers", []):

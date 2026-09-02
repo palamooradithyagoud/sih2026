@@ -906,43 +906,51 @@ def generate_intent(question: str, case_id: str) -> InvestigationIntent:
             max_hops=1,
         )
 
-    model = settings.GROQ_MODEL or settings.LLM_MODEL or "llama-3.3-70b-versatile"
+    primary_model = settings.GROQ_MODEL or settings.LLM_MODEL or "qwen/qwen3.8-27b"
+    models_to_try = [primary_model]
+    if "qwen/qwen3.8-27b" not in models_to_try:
+        models_to_try.append("qwen/qwen3.8-27b")
 
     user_message = f"""Case ID: {case_id}
 Investigator Question: {question}
 
 Extract the investigation intent from this question."""
 
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": INTENT_EXTRACTION_SYSTEM_PROMPT},
-                {"role": "user", "content": user_message},
-            ],
-            temperature=0.0,
-            max_tokens=512,
-        )
-        raw = response.choices[0].message.content.strip()
+    for model in models_to_try:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": INTENT_EXTRACTION_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=0.0,
+                max_tokens=512,
+            )
+            msg = response.choices[0].message
+            raw = (msg.content or getattr(msg, "reasoning", "") or "").strip()
 
-        # Strip any accidental markdown code fences
-        raw = re.sub(r"^```[a-z]*\s*", "", raw)
-        raw = re.sub(r"\s*```$", "", raw)
+            # Strip any accidental markdown code fences
+            raw = re.sub(r"^```[a-z]*\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
 
-        parsed = json.loads(raw)
-        intent = InvestigationIntent(**parsed)
-        logger.info(f"[Copilot] Intent extracted: {intent.intent} | person={intent.person_name}")
-        return intent
+            parsed = json.loads(raw)
+            intent = InvestigationIntent(**parsed)
+            logger.info(f"[Copilot] Intent extracted ({model}): {intent.intent} | person={intent.person_name}")
+            return intent
 
-    except (json.JSONDecodeError, Exception) as e:
-        logger.error(f"[Copilot] Intent extraction failed: {e}. Falling back to entity_summary.")
-        return InvestigationIntent(
-            intent=InvestigationIntentType.ENTITY_SUMMARY,
-            person_name=None,
-            entity_name=None,
-            limit=25,
-            max_hops=1,
-        )
+        except Exception as e:
+            logger.warning(f"[Copilot] Intent extraction failed on model {model}: {e}")
+            continue
+
+    logger.error("[Copilot] All intent extraction models failed. Falling back to entity_summary.")
+    return InvestigationIntent(
+        intent=InvestigationIntentType.ENTITY_SUMMARY,
+        person_name=None,
+        entity_name=None,
+        limit=25,
+        max_hops=1,
+    )
 
 
 def generate_grounded_answer(
@@ -968,7 +976,10 @@ def generate_grounded_answer(
             "medium",
         )
 
-    model = settings.GROQ_MODEL or settings.LLM_MODEL or "llama-3.3-70b-versatile"
+    primary_model = settings.GROQ_MODEL or settings.LLM_MODEL or "qwen/qwen3.8-27b"
+    models_to_try = [primary_model]
+    if "qwen/qwen3.8-27b" not in models_to_try:
+        models_to_try.append("qwen/qwen3.8-27b")
 
     result_summary = json.dumps(results[:20], default=str, indent=2)
     confidence = "high" if len(results) >= 1 else "low"
@@ -985,28 +996,33 @@ Graph Query Results ({len(results)} records found):
 
 Generate a concise factual answer strictly based on these graph results."""
 
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": GROUNDED_ANSWER_SYSTEM_PROMPT},
-                {"role": "user", "content": user_message},
-            ],
-            temperature=0.1,
-            max_tokens=600,
-        )
-        answer = response.choices[0].message.content.strip()
-        return answer, confidence
-
-    except Exception as e:
-        logger.error(f"[Copilot] Grounded answer generation failed: {e}")
-        if results:
-            return (
-                f"Graph evidence found {len(results)} record(s) for this query. "
-                f"Please review the raw results provided.",
-                "medium",
+    for model in models_to_try:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": GROUNDED_ANSWER_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=0.1,
+                max_tokens=600,
             )
-        return "No graph evidence found for this query.", "low"
+            msg = response.choices[0].message
+            answer = (msg.content or getattr(msg, "reasoning", "") or "").strip()
+            if answer:
+                return answer, confidence
+        except Exception as e:
+            logger.warning(f"[Copilot] Grounded answer failed on model {model}: {e}")
+            continue
+
+    logger.error("[Copilot] All models failed for grounded answer generation.")
+    if results:
+        return (
+            f"Graph evidence found {len(results)} record(s) for this query. "
+            f"Please review the raw results provided.",
+            "medium",
+        )
+    return "No graph evidence found for this query.", "low"
 
 
 # ---------------------------------------------------------------------------

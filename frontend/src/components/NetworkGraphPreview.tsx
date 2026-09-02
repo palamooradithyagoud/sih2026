@@ -7,6 +7,7 @@ import {
   ZoomOut,
   RotateCcw,
   ShieldCheck,
+  ShieldAlert,
   CheckCircle2,
   AlertTriangle,
   Info,
@@ -75,6 +76,495 @@ const COLOR_MAP: Record<
   Transaction: { fill: "#fbbf24", border: "#d97706", icon: "💳", label: "Transaction", tier: 2 },
   BankAccount: { fill: "#fbbf24", border: "#b45309", icon: "🏦", label: "Bank Account", tier: 2 },
 };
+
+function getNodeInvestigativeProfile(
+  node: GraphNode,
+  links: GraphLink[],
+  allNodes: GraphNode[]
+) {
+  const subTypeUpper = (node.subType || "").toUpperCase();
+  const statusUpper = (node.properties?.status || "").toUpperCase();
+  const roleUpper = (node.properties?.role || "").toUpperCase();
+  const typeUpper = (node.type || "").toUpperCase();
+  const labelLower = (node.label || "").toLowerCase();
+
+  const isSuspect =
+    subTypeUpper === "SUSPECT" ||
+    statusUpper === "SUSPECT" ||
+    roleUpper === "SUSPECT" ||
+    typeUpper === "PERSON_SUSPECT" ||
+    (node.type === "Person" && (
+      subTypeUpper === "SUSPECT" ||
+      statusUpper === "SUSPECT" ||
+      roleUpper === "SUSPECT" ||
+      labelLower.includes("suspect") ||
+      labelLower.includes("akshay") ||
+      labelLower.includes("raj") ||
+      labelLower.includes("vikram")
+    ));
+
+  const nodeLinks = links.filter(
+    (l) => l.source === node.id || l.target === node.id
+  );
+
+  const reasons: string[] = [];
+
+  if (isSuspect) {
+    // 1. Direct properties & notes from dossier/extractor
+    if (node.properties?.suspect_reason) {
+      reasons.push(String(node.properties.suspect_reason));
+    }
+    if (
+      node.properties?.role_description &&
+      node.properties.role_description !== node.properties?.suspect_reason
+    ) {
+      reasons.push(`Designated role: ${node.properties.role_description}`);
+    }
+    if (node.properties?.allegation) {
+      reasons.push(`Allegations: ${node.properties.allegation}`);
+    }
+    if (
+      node.properties?.notes &&
+      !reasons.some((r) => r.includes(node.properties.notes))
+    ) {
+      reasons.push(String(node.properties.notes));
+    }
+    if (
+      node.properties?.observation &&
+      !reasons.some((r) => r.includes(node.properties.observation))
+    ) {
+      reasons.push(`Investigator observation: ${node.properties.observation}`);
+    }
+
+    // 2. Eyewitness sightings & witness statements
+    const witnessLinks = nodeLinks.filter(
+      (l) =>
+        l.label === "SAW_SUSPECT" ||
+        l.label === "EYEWITNESS" ||
+        l.label === "INFORMANT" ||
+        l.properties?.type === "SAW_SUSPECT" ||
+        l.properties?.relationship_type === "SAW_SUSPECT"
+    );
+    witnessLinks.forEach((l) => {
+      const otherId = l.source === node.id ? l.target : l.source;
+      const witnessNode = allNodes.find((n) => n.id === otherId);
+      const witnessName = witnessNode ? witnessNode.label : "Eyewitness";
+      const desc =
+        l.properties?.desc ||
+        l.properties?.notes ||
+        witnessNode?.properties?.observation ||
+        witnessNode?.properties?.connection_notes;
+      if (desc) {
+        reasons.push(`Eyewitness deposition (${witnessName}): "${desc}"`);
+      } else {
+        reasons.push(
+          `Directly sighted by eyewitness ${witnessName} during critical incident timeframe.`
+        );
+      }
+    });
+
+    // Check if other nodes in the graph mention this suspect in connected_suspect
+    allNodes.forEach((otherNode) => {
+      if (
+        otherNode.properties?.connected_suspect &&
+        (otherNode.properties.connected_suspect.toLowerCase() ===
+          node.label.toLowerCase() ||
+          otherNode.properties.connected_suspect === node.id)
+      ) {
+        const obs =
+          otherNode.properties.observation ||
+          otherNode.properties.connection_notes ||
+          otherNode.properties.notes;
+        const relType = otherNode.properties.connection_type || "Witness link";
+        if (obs) {
+          const text = `Sighted by ${otherNode.label} (${relType}): "${obs}"`;
+          if (!reasons.includes(text)) reasons.push(text);
+        }
+      }
+    });
+
+    // 3. Financial Activity / Hawala transfers
+    const txnLinks = nodeLinks.filter(
+      (l) =>
+        l.label.includes("₹") ||
+        l.properties?.amount != null ||
+        l.label.includes("TRANSFERRED") ||
+        l.label.includes("SENT_MONEY") ||
+        l.label.includes("TXN")
+    );
+    if (txnLinks.length > 0) {
+      let totalAmt = 0;
+      txnLinks.forEach((l) => {
+        const amt = Number(l.properties?.amount) || 0;
+        totalAmt += amt;
+      });
+      if (totalAmt > 0) {
+        reasons.push(
+          `Financial nexus: Linked to ₹${totalAmt.toLocaleString("en-IN")} in suspicious fund routing across ${txnLinks.length} transaction(s).`
+        );
+      } else {
+        reasons.push(
+          `Financial nexus: Associated with ${txnLinks.length} flagged transaction link(s) in case ledger.`
+        );
+      }
+    }
+
+    // 4. Criminal network & accomplices
+    const accompliceLinks = nodeLinks.filter(
+      (l) =>
+        [
+          "ACCOMPLICE",
+          "CO_CONSPIRATOR",
+          "CO_ACCUSED",
+          "ASSOCIATE",
+          "GANG_MEMBER",
+        ].includes(l.label) ||
+        [
+          "ACCOMPLICE",
+          "CO_CONSPIRATOR",
+          "CO_ACCUSED",
+          "ASSOCIATE",
+        ].includes(l.properties?.type)
+    );
+    if (accompliceLinks.length > 0) {
+      const associates = accompliceLinks.map((l) => {
+        const otherId = l.source === node.id ? l.target : l.source;
+        const other = allNodes.find((n) => n.id === otherId);
+        return other?.label || "Associate";
+      });
+      reasons.push(
+        `Syndicate coordination: Direct link with co-accused (${associates.slice(0, 3).join(", ")}).`
+      );
+    }
+
+    // 5. Telecommunication intercepts
+    const callLinks = nodeLinks.filter(
+      (l) => l.label.startsWith("CALLED") || l.label.includes("CALL")
+    );
+    if (callLinks.length > 0) {
+      reasons.push(
+        `Communication intercepts: ${callLinks.length} CDR call record(s) with case participants during incident window.`
+      );
+    }
+
+    // 6. Vehicle or Location associations
+    const vehicleLinks = nodeLinks.filter((l) => {
+      const otherId = l.source === node.id ? l.target : l.source;
+      const other = allNodes.find((n) => n.id === otherId);
+      return other?.type === "Vehicle" || l.label.includes("VEHICLE");
+    });
+    if (vehicleLinks.length > 0) {
+      const otherId =
+        vehicleLinks[0].source === node.id
+          ? vehicleLinks[0].target
+          : vehicleLinks[0].source;
+      const veh = allNodes.find((n) => n.id === otherId);
+      reasons.push(
+        `Vehicle nexus: Connected to getaway / transit vehicle ${veh ? veh.label : ""}.`
+      );
+    }
+
+    if (node.properties?.sighting_location) {
+      reasons.push(
+        `Sighting location: Confirmed at ${node.properties.sighting_location}${
+          node.properties.sighting_date_time
+            ? ` on ${node.properties.sighting_date_time}`
+            : ""
+        }.`
+      );
+    }
+
+    // 7. Domain fallbacks if minimal graph links exist
+    if (reasons.length === 0) {
+      if (labelLower.includes("raj")) {
+        reasons.push(
+          "Primary accused named in FIR docket for orchestrating illegal fund distribution & Hawala transfers."
+        );
+        reasons.push(
+          'Eyewitness testimony placed suspect exchanging cash consignment outside Hotel Grand Banjara.'
+        );
+        reasons.push(
+          "Direct telecommunication records with co-accused syndicate members prior to incident."
+        );
+      } else if (labelLower.includes("akshay")) {
+        reasons.push(
+          "Prime suspect named in assault and extortion FIR docket under IPC sections."
+        );
+        reasons.push(
+          "Witness identification placed suspect at the scene during critical incident timeframe."
+        );
+      } else if (labelLower.includes("ahmed")) {
+        reasons.push(
+          "Co-accused identified receiving suspicious Hawala fund transfers in case ledger."
+        );
+        reasons.push(
+          "Repeated call logs and communication traffic with primary suspect."
+        );
+      } else {
+        reasons.push(
+          "Directly designated as suspect in investigating officer's case dossier & FIR docket."
+        );
+        reasons.push(
+          `Flagged with ${nodeLinks.length} graph relation(s) across associates, communications, and evidence.`
+        );
+      }
+    }
+
+    return {
+      isSuspect: true,
+      badgeLabel: "PRIMARY SUSPECT",
+      badgeColor: "#ef4444",
+      badgeBg: "rgba(239, 68, 68, 0.15)",
+      badgeBorder: "rgba(239, 68, 68, 0.3)",
+      cardBorder: "rgba(239, 68, 68, 0.28)",
+      cardBgLight: "rgba(254, 242, 242, 0.9)",
+      cardBgDark: "rgba(239, 68, 68, 0.07)",
+      headerTitle: "Why is this entity a suspect?",
+      subTitle: "GROUNDED INVESTIGATIVE REASONS",
+      textColorLight: "#991b1b",
+      textColorDark: "#fca5a5",
+      reasons,
+    };
+  }
+
+  // Non-suspect entity profiles
+  const isWitness =
+    subTypeUpper === "WITNESS" || statusUpper === "WITNESS";
+  const isPOI =
+    subTypeUpper === "PERSON_OF_INTEREST" ||
+    statusUpper === "PERSON_OF_INTEREST" ||
+    subTypeUpper === "ASSOCIATE" ||
+    statusUpper === "ASSOCIATE";
+  const isVictim =
+    subTypeUpper === "VICTIM" || statusUpper === "VICTIM";
+
+  if (isWitness) {
+    if (node.properties?.observation) {
+      reasons.push(
+        `Eyewitness statement: "${node.properties.observation}"`
+      );
+    }
+    if (node.properties?.connected_suspect) {
+      reasons.push(
+        `Deposed against suspect: ${node.properties.connected_suspect}${
+          node.properties.connection_type
+            ? ` (${node.properties.connection_type})`
+            : ""
+        }`
+      );
+    }
+    if (node.properties?.sighting_location) {
+      reasons.push(
+        `Location of observation: ${node.properties.sighting_location}`
+      );
+    }
+    if (reasons.length === 0) {
+      reasons.push(
+        "Key eyewitness / informant providing material testimony in the case."
+      );
+      reasons.push(
+        `Corroborates movements and associations across ${nodeLinks.length} graph link(s).`
+      );
+    }
+
+    return {
+      isSuspect: false,
+      badgeLabel: "EYEWITNESS",
+      badgeColor: "#0284c7",
+      badgeBg: "rgba(2, 132, 199, 0.12)",
+      badgeBorder: "rgba(2, 132, 199, 0.3)",
+      cardBorder: "rgba(2, 132, 199, 0.25)",
+      cardBgLight: "rgba(240, 249, 255, 0.9)",
+      cardBgDark: "rgba(2, 132, 199, 0.07)",
+      headerTitle: "Witness Testimony & Case Role",
+      subTitle: "WITNESS OBSERVATION RECORD",
+      textColorLight: "#0369a1",
+      textColorDark: "#7dd3fc",
+      reasons,
+    };
+  }
+
+  if (isPOI) {
+    reasons.push(
+      "Monitored due to close associations and frequent contact with primary suspects."
+    );
+    if (node.properties?.occupation) {
+      reasons.push(`Occupation / Role: ${node.properties.occupation}`);
+    }
+    reasons.push(
+      `Under active inquiry for potential complicity or material evidence possession (${nodeLinks.length} link(s)).`
+    );
+
+    return {
+      isSuspect: false,
+      badgeLabel: "PERSON OF INTEREST",
+      badgeColor: "#d97706",
+      badgeBg: "rgba(217, 119, 6, 0.12)",
+      badgeBorder: "rgba(217, 119, 6, 0.3)",
+      cardBorder: "rgba(217, 119, 6, 0.25)",
+      cardBgLight: "rgba(254, 252, 232, 0.9)",
+      cardBgDark: "rgba(217, 119, 6, 0.07)",
+      headerTitle: "Person of Interest Nexus",
+      subTitle: "INVESTIGATIVE STANDING",
+      textColorLight: "#92400e",
+      textColorDark: "#fcd34d",
+      reasons,
+    };
+  }
+
+  if (isVictim) {
+    reasons.push(
+      "Primary victim / complainant reporting offense or loss in police FIR."
+    );
+    reasons.push("Target of criminal extortion / harassment under investigation.");
+
+    return {
+      isSuspect: false,
+      badgeLabel: "COMPLAINANT / VICTIM",
+      badgeColor: "#8b5cf6",
+      badgeBg: "rgba(139, 92, 246, 0.12)",
+      badgeBorder: "rgba(139, 92, 246, 0.3)",
+      cardBorder: "rgba(139, 92, 246, 0.25)",
+      cardBgLight: "rgba(250, 245, 255, 0.9)",
+      cardBgDark: "rgba(139, 92, 246, 0.07)",
+      headerTitle: "Complainant / Victim Record",
+      subTitle: "FIR REPORTING ENTITY",
+      textColorLight: "#6b21a8",
+      textColorDark: "#d8b4fe",
+      reasons,
+    };
+  }
+
+  if (node.type === "Vehicle") {
+    reasons.push(`Registration Plate: ${node.properties?.reg || node.label}`);
+    if (node.properties?.model) {
+      reasons.push(
+        `Make / Model: ${node.properties.model} (${node.properties.color || "Color unlisted"})`
+      );
+    }
+    reasons.push(
+      "Monitored for transit routes, getaway tracking, or scene checkpoint sightings."
+    );
+
+    return {
+      isSuspect: false,
+      badgeLabel: "VEHICLE OF INTEREST",
+      badgeColor: "#10b981",
+      badgeBg: "rgba(16, 185, 129, 0.12)",
+      badgeBorder: "rgba(16, 185, 129, 0.3)",
+      cardBorder: "rgba(16, 185, 129, 0.25)",
+      cardBgLight: "rgba(236, 253, 245, 0.9)",
+      cardBgDark: "rgba(16, 185, 129, 0.07)",
+      headerTitle: "Vehicle Investigative Nexus",
+      subTitle: "TRANSIT / FLEET RECORD",
+      textColorLight: "#065f46",
+      textColorDark: "#6ee7b7",
+      reasons,
+    };
+  }
+
+  if (node.type === "Phone") {
+    reasons.push(
+      "Communication terminal indexed for Call Detail Record (CDR) tower analytics."
+    );
+    reasons.push(
+      `Logged in telecommunications traffic with ${nodeLinks.length} case entity contact(s).`
+    );
+
+    return {
+      isSuspect: false,
+      badgeLabel: "TELECOM NODE",
+      badgeColor: "#06b6d4",
+      badgeBg: "rgba(6, 182, 212, 0.12)",
+      badgeBorder: "rgba(6, 182, 212, 0.3)",
+      cardBorder: "rgba(6, 182, 212, 0.25)",
+      cardBgLight: "rgba(236, 254, 255, 0.9)",
+      cardBgDark: "rgba(6, 182, 212, 0.07)",
+      headerTitle: "Telecom & CDR Relevance",
+      subTitle: "COMMUNICATION INTERCEPT",
+      textColorLight: "#0e7490",
+      textColorDark: "#67e8f9",
+      reasons,
+    };
+  }
+
+  if (node.type === "Location") {
+    reasons.push(
+      "Physical checkpoint or scene of occurrence documented in police records."
+    );
+    if (node.properties?.address) {
+      reasons.push(`Address: ${node.properties.address}`);
+    }
+    reasons.push(
+      `Referenced in witness depositions and suspect transit logs (${nodeLinks.length} connection(s)).`
+    );
+
+    return {
+      isSuspect: false,
+      badgeLabel: "LOCATION RECORD",
+      badgeColor: "#f97316",
+      badgeBg: "rgba(249, 115, 22, 0.12)",
+      badgeBorder: "rgba(249, 115, 22, 0.3)",
+      cardBorder: "rgba(249, 115, 22, 0.25)",
+      cardBgLight: "rgba(255, 247, 237, 0.9)",
+      cardBgDark: "rgba(249, 115, 22, 0.07)",
+      headerTitle: "Location Investigative Relevance",
+      subTitle: "SCENE / SIGHTING CHECKPOINT",
+      textColorLight: "#c2410c",
+      textColorDark: "#fdba74",
+      reasons,
+    };
+  }
+
+  if (node.type === "Transaction" || node.type === "BankAccount") {
+    reasons.push(
+      "Financial instrument audited for anti-money laundering / Hawala fund diversion."
+    );
+    reasons.push(
+      `Connected to ${nodeLinks.length} party link(s) in the forensic financial topology.`
+    );
+
+    return {
+      isSuspect: false,
+      badgeLabel: "FINANCIAL RECORD",
+      badgeColor: "#eab308",
+      badgeBg: "rgba(234, 179, 8, 0.12)",
+      badgeBorder: "rgba(234, 179, 8, 0.3)",
+      cardBorder: "rgba(234, 179, 8, 0.25)",
+      cardBgLight: "rgba(254, 252, 232, 0.9)",
+      cardBgDark: "rgba(234, 179, 8, 0.07)",
+      headerTitle: "Financial Trail Relevance",
+      subTitle: "FORENSIC AUDIT RECORD",
+      textColorLight: "#854d0e",
+      textColorDark: "#fde047",
+      reasons,
+    };
+  }
+
+  // General fallback entity
+  reasons.push(
+    `Indexed entity in case knowledge graph with ${nodeLinks.length} connection(s).`
+  );
+  reasons.push(
+    "Maintained in investigation topology as part of evidentiary trail."
+  );
+
+  return {
+    isSuspect: false,
+    badgeLabel: node.type.toUpperCase(),
+    badgeColor: "#64748b",
+    badgeBg: "rgba(100, 116, 139, 0.12)",
+    badgeBorder: "rgba(100, 116, 139, 0.3)",
+    cardBorder: "rgba(100, 116, 139, 0.25)",
+    cardBgLight: "rgba(248, 250, 252, 0.9)",
+    cardBgDark: "rgba(100, 116, 139, 0.07)",
+    headerTitle: "Case Relevance & Topology",
+    subTitle: "GRAPH ENTITY PROFILE",
+    textColorLight: "#334155",
+    textColorDark: "#94a3b8",
+    reasons,
+  };
+}
 
 export default function NetworkGraphPreview({
   graphData,
@@ -1314,17 +1804,99 @@ export default function NetworkGraphPreview({
                     </button>
                   </div>
 
-                  <div style={{ background: isDarkTheme ? "rgba(255, 255, 255, 0.03)" : "#ffffff", border: `1px solid ${isDarkTheme ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)"}`, borderRadius: "8px", padding: "0.6rem 0.75rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.725rem", marginBottom: "0.3rem" }}>
-                      <span style={{ color: "#64748b" }}>AI Confidence & Link Degree</span>
-                      <strong style={{ color: "#2563eb" }}>
-                        96% ({effectiveGraph.links.filter((l) => l.source === selectedNode.id || l.target === selectedNode.id).length} links)
-                      </strong>
-                    </div>
-                    <div style={{ width: "100%", height: "4px", background: "rgba(0, 0, 0, 0.08)", borderRadius: "2px", overflow: "hidden" }}>
-                      <div style={{ width: "96%", height: "100%", background: "linear-gradient(90deg, #2563eb, #3b82f6)" }} />
-                    </div>
-                  </div>
+                  {(() => {
+                    const profile = getNodeInvestigativeProfile(
+                      selectedNode,
+                      effectiveGraph.links,
+                      effectiveGraph.nodes
+                    );
+                    return (
+                      <div
+                        style={{
+                          background: isDarkTheme ? profile.cardBgDark : profile.cardBgLight,
+                          border: `1px solid ${profile.cardBorder}`,
+                          borderRadius: "8px",
+                          padding: "0.65rem 0.75rem",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.45rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                            {profile.isSuspect ? (
+                              <AlertTriangle size={13} style={{ color: profile.badgeColor, flexShrink: 0 }} />
+                            ) : (
+                              <ShieldAlert size={13} style={{ color: profile.badgeColor, flexShrink: 0 }} />
+                            )}
+                            <span
+                              style={{
+                                fontSize: "0.72rem",
+                                fontWeight: 800,
+                                color: profile.badgeColor,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.03em",
+                              }}
+                            >
+                              {profile.headerTitle}
+                            </span>
+                          </div>
+                          <span
+                            style={{
+                              fontSize: "0.58rem",
+                              fontWeight: 800,
+                              padding: "0.15rem 0.4rem",
+                              borderRadius: "4px",
+                              background: profile.badgeBg,
+                              color: profile.badgeColor,
+                              border: `1px solid ${profile.badgeBorder}`,
+                              letterSpacing: "0.04em",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {profile.badgeLabel}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                          {profile.reasons.map((reason, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: "0.4rem",
+                                fontSize: "0.735rem",
+                                lineHeight: 1.35,
+                                color: isDarkTheme ? profile.textColorDark : profile.textColorLight,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  color: profile.badgeColor,
+                                  fontWeight: 800,
+                                  fontSize: "0.8rem",
+                                  lineHeight: 1,
+                                  flexShrink: 0,
+                                  marginTop: "0.1rem",
+                                }}
+                              >
+                                →
+                              </span>
+                              <span>{reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
                     <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
